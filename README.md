@@ -36,13 +36,14 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
    Pontos ambíguos da reunião são decididos por mim, não pela IA, em checkpoints explícitos.
 4. **Sem templates do curso.** Os documentos seguem as seções mínimas exigidas no enunciado para PRD, RFC e FDD, e o formato MADR para os ADRs.
 5. **Processo documentado durante o trabalho.** Este README é atualizado ao final de cada fase, para que prompts e iterações sejam registrados quando acontecem, e não reconstruídos de memória no fim.
+6. **Catálogo como base de verdade.** Antes de escrever qualquer documento, a transcrição foi catalogada linha a linha, com um ID por item e a origem `[hh:mm] Nome`, e um script confere se todas as falas estão cobertas e se cada citação existe. Os documentos só usam o que está no catálogo ou no código. O que a reunião deixou ambíguo vira checkpoint de decisão minha, com opções e recomendação, antes de entrar em qualquer documento.
 
 **Andamento**
 
 | Fase | Status |
 | --- | --- |
 | 0. Setup (branch `docs/design-docs-webhooks`, ambiente, registro do processo) | ✅ |
-| 1. Extração e catálogo da transcrição | ⏳ |
+| 1. Extração e catálogo da transcrição | ✅ |
 | 2. ADRs | ⏳ |
 | 3. RFC | ⏳ |
 | 4. FDD | ⏳ |
@@ -73,7 +74,27 @@ pode começar a fase 0, usa branch, mas lance um a gente opus pra executar e dep
 executada corretamente.
 ```
 
-<!-- Próximos: prompts dirigidos de extração da transcrição (fase 1) e de geração dos documentos (fases 2-6). -->
+### 3. Extração e classificação da transcrição
+
+Usado na passada linha a linha que gerou o catálogo. Impede que a IA resuma a reunião ou deduza requisitos: obriga a separar decidido de sugerido, adiado de descartado, e a registrar as ideias que foram propostas e depois substituídas (como o `customer_id` vindo do JWT), que são exatamente os pontos em que um resumo genérico erra.
+
+```text
+Você é um analista técnico extraindo requisitos de uma reunião. Leia TRANSCRICAO.md LINHA A LINHA.
+Para CADA fala que contenha decisão, requisito, restrição, alternativa descartada, item fora de escopo,
+questão em aberto ou referência ao código, gere uma linha de tabela com:
+T-ID | [hh:mm] Nome (exatamente como na transcrição) | Categoria | Resumo de 1 linha | Documento destino.
+
+Regras:
+- Use apenas o que está escrito. Não deduza requisitos.
+- Quando uma ideia for proposta e depois descartada ou substituída (ex.: customer_id do JWT em [09:31]
+  substituído em [09:32]), registre AS DUAS linhas e marque a primeira como "Descartada".
+- Diferencie "decidido" (alguém fechou: "Decidido", "Decisão", "Anotado", "Tá decidido") de "sugerido".
+- Separe explicitamente o que foi ADIADO (próxima fase) do que foi DESCARTADO (não será feito).
+- Não catalogue cumprimentos, entradas e saídas da call.
+Ao final, liste as falas que você considera ambíguas ou contraditórias entre si.
+```
+
+<!-- Próximos: prompts de geração dos documentos (fases 2-6). -->
 
 ## Iterações e ajustes
 
@@ -81,6 +102,8 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 
 | # | Fase / documento | O que a IA gerou | Problema | Ajuste |
 | --- | --- | --- | --- | --- |
+| 1 | Fase 1 / execução do subagente | A primeira execução tentou gerar o catálogo inteiro da transcrição (151 falas) num único passo | Ficou cerca de 25 minutos sem gravar o catálogo nem os outros insumos. Só o script de validação apareceu no disco, segundos antes da interrupção. Percebi que o agente parecia parado e confirmei olhando o horário de modificação dos arquivos | Interrompi e relancei com instrução de escrita incremental: catálogo em 4 blocos de horário, arquivo criado com o primeiro bloco e os demais anexados, cada entregável salvo antes de começar o próximo |
+| 2 | Fase 1 / catálogo vs. pré-análise | A pré-análise feita pela IA no planejamento atribuía uma fonte a cada decisão e linhas de código a cada ponto de integração | Algumas fontes apontavam para a fala da proposta, não a do fechamento (HMAC em [09:20] Sofia e secret por endpoint em [09:21] Sofia, em vez do "Decidido" de [09:22] Sofia; headers em [09:45] Diego em vez da lista de [09:44] Diego); o resumo de [09:48] Larissa era citado como apoio da contagem "1 + 5 tentativas", quando o "total 5 tentativas" dele é justamente a origem da dúvida; o redact da secret no log era atribuído a uma fala sobre o log do cliente; e havia intervalo de linhas errado em `order.status.ts` | A passada linha a linha e a conferência de cada arquivo com `sed`/`grep` expuseram as divergências. Corrigi as fontes no catálogo e no registro de IDs, refiz o mapa do código com uma seção de correções e levei 11 ambiguidades novas ao checkpoint de decisão |
 
 ## Como navegar a entrega
 

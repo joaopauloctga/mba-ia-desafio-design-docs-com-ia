@@ -21,9 +21,9 @@ Proposta aberta para revisão; decisões fechadas nos ADRs, implementação no [
 
 ## 2. Contexto e problema
 
-Três clientes B2B fazem polling em `GET /orders` para saber se seus pedidos mudaram, o que deixa a integração "lenta e cara"; a Atlas sinalizou que pode migrar para o concorrente ([09:00] Marcos). Abaixo de 10s já é "tempo real", e o fluxo é só de saída ([09:02] Marcos). Objetivos e métricas estão no [PRD](./PRD.md).
+Três clientes B2B fazem polling em `GET /orders` para saber se seus pedidos mudaram, o que deixa a integração "lenta e cara"; a Atlas sinalizou que pode migrar para o concorrente ([09:00] Marcos). Abaixo de 10s já é "tempo real", e o fluxo é só de saída ([09:02] Marcos).
 
-O OMS não tem mecanismo de eventos: `src/modules/` só tem `auth`, `customers`, `orders`, `products` e `users`. O status muda em `changeStatus` (`src/modules/orders/order.service.ts`, L126-179), numa transação que "já é pesada" ([09:04] Bruno). Duas forças: cliente lento não pode travar mudanças de status ([09:04] Bruno), e o time é pequeno, por isso a solução usa o MySQL existente, sem subir mais infraestrutura ([09:07] Larissa, [09:07] Diego).
+O OMS não tem mecanismo de eventos: `src/modules/` só tem `auth`, `customers`, `orders`, `products` e `users`. O status muda em `changeStatus` (`src/modules/orders/order.service.ts`), numa transação que "já é pesada" ([09:04] Bruno). Duas forças: cliente lento não pode travar mudanças de status ([09:04] Bruno), e o time é pequeno, por isso a solução usa o MySQL existente, sem subir mais infraestrutura ([09:07] Larissa, [09:07] Diego).
 
 ## 3. Proposta técnica
 
@@ -39,19 +39,19 @@ flowchart LR
 
 **PROP-01 Captura.** Uma função que recebe o client da transação do `changeStatus` ([09:41] Bruno) grava o evento na outbox: commit e rollback valem para status e evento ([09:06] Diego), e falha na inserção desfaz a mudança de status ([09:40] Bruno). O evento é um snapshot enxuto do pedido, sem items ([09:52] Bruno, [09:43] Diego), gravado só se algum webhook do customer quer aquele status ([09:34] Bruno). → [ADR-001](./adrs/ADR-001-outbox-transacional-no-mysql.md), [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md)
 
-**PROP-02 Despacho.** Processo próprio, com entry-point `src/worker.ts` **(novo, a criar)** ([09:11] Larissa), para não cair junto com a API ([09:11] Diego). A cada 2s, lê os pendentes mais antigos ([09:09] Diego): até 2s de espera, dentro da meta de 10s (leitura de [09:10] Larissa no ADR-002). Instância única: ordem só por pedido ([09:13] Larissa), com a ressalva do PC-03. → [ADR-002](./adrs/ADR-002-worker-em-processo-separado-com-polling.md)
+**PROP-02 Despacho.** Processo próprio, com entry-point `src/worker.ts` **(novo, a criar)** ([09:11] Larissa), para não cair junto com a API ([09:11] Diego). A cada 2s, lê os pendentes mais antigos ([09:09] Diego): até 2s de espera, dentro da meta de 10s, salvo endpoint lento na fila (leitura de [09:10] Larissa no ADR-002). Instância única: ordem só por pedido ([09:13] Larissa), com a ressalva do PC-03. → [ADR-002](./adrs/ADR-002-worker-em-processo-separado-com-polling.md)
 
 **PROP-03 Entrega segura.** O worker assina o corpo com HMAC-SHA256 ([09:22] Sofia) e envia a assinatura no `X-Signature` ([09:20] Sofia). Cada endpoint tem secret própria, gerada pela plataforma ([09:31] Marcos) e rotacionável, com a antiga válida por 24h ([09:21] Sofia). URL só HTTPS ([09:23] Sofia); payload acima de 64KB é erro, não truncamento ([09:23] Sofia, [09:24] Larissa). → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
 
 **PROP-04 Confiabilidade.** At-least-once ([09:26] Larissa): o cliente deduplica pelo `X-Event-Id`, UUID gerado na entrada da outbox ([09:25] Diego). Timeout de 10s é falha ([09:42] Diego). Retentativas em 1m/5m/30m/2h/12h ([09:17] Larissa), lidas como 1 envio inicial + 5 retentativas em 14h36m (PC-01). Esgotadas, o evento vai para a DLQ, tabela separada ([09:18] Diego), e só volta por replay de um ADMIN, com registro de quem fez ([09:36] Sofia). → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md), [ADR-005](./adrs/ADR-005-entrega-at-least-once-com-x-event-id.md)
 
-**PROP-05 Configuração e API.** Cadastrar webhook com URL e lista de status ([09:31] Marcos); editar, remover e listar os de um customer ([09:33] Bruno); rotacionar a secret ([09:21] Sofia); ver as últimas 100 entregas ([09:34] Marcos); reprocessar a DLQ ([09:18] Diego). O customer vem na requisição, não do JWT ([09:32] Larissa). Replay só para ADMIN ([09:36] Larissa); o resto, "por enquanto", qualquer role autenticada ([09:37] Sofia). Rotas e respostas: detalhado no FDD. → [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md), [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
+**PROP-05 Configuração e API.** Cadastrar webhook com URL e lista de status ([09:31] Marcos); editar, remover e listar os de um customer ([09:33] Bruno); rotacionar a secret ([09:21] Sofia); ver as últimas 100 entregas ([09:34] Marcos); reprocessar a DLQ ([09:18] Diego). O customer vem na requisição, não do JWT ([09:32] Larissa). Replay só para ADMIN ([09:36] Larissa); o resto, "por enquanto", qualquer role autenticada ([09:37] Sofia). → [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md), [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
 
 **PROP-06 Padrões do projeto.** Webhook vira "módulo igual aos outros" ([09:30] Larissa), em `src/modules/webhooks/` **(novo, a criar)** ([09:27] Bruno): `AppError` (`src/shared/errors/app-error.ts`) com prefixo `WEBHOOK_` ([09:29] Larissa), error middleware e Pino ([09:29] Bruno), Zod, `requireRole` ([09:36] Larissa) e UUID ([09:51] Larissa). O worker tem instância própria do Prisma ([09:30] Bruno). → [ADR-006](./adrs/ADR-006-reuso-dos-padroes-existentes-do-projeto.md)
 
 ## 4. Alternativas consideradas
 
-Só alternativas descartadas na reunião; as demais estão nos ADRs.
+Seleção das alternativas descartadas na reunião; as demais estão nos ADRs.
 
 | ID | Alternativa | Trade-off que levou ao descarte | Fonte | ADR |
 | --- | --- | --- | --- | --- |
@@ -70,22 +70,22 @@ Adiados ou não decididos na reunião; nenhum é requisito desta entrega. Dono e
 | OQ-01 | Rate limiting de saída: 50 mudanças num minuto viram 50 chamadas? | "observar e decidir depois" | Diego, após medir o volume real | [09:38] Diego, [09:39] Larissa |
 | OQ-02 | Vários workers sem perder a ordem por pedido (partição por `order_id` ou lock pessimista) | "problema do futuro" | Diego, quando um worker não der vazão | [09:13] Diego |
 | OQ-03 | Email ao cliente após falhas seguidas | "Talvez próxima fase, depois que a gente medir o impacto" | Marcos, depois de medir o impacto | [09:37] Marcos, [09:37] Larissa |
-| OQ-04 | Endurecer a autorização do CRUD: hoje qualquer usuário autenticado gerencia webhooks de qualquer customer (`User` sem vínculo com `Customer`, `prisma/schema.prisma`, L25-38) | "Mais pra frente a gente pode endurecer" | Sofia, na próxima fase | [09:37] Sofia |
+| OQ-04 | Endurecer a autorização do CRUD: hoje qualquer usuário autenticado gerencia webhooks de qualquer customer (`User` sem vínculo com `Customer`, `prisma/schema.prisma`) | "Mais pra frente a gente pode endurecer" | Sofia, na próxima fase | [09:37] Sofia |
 | OQ-05 | Retenção da outbox: arquivar as entregues "depois de 30 dias ou assim" | "fora do escopo dessa feature" | Diego, antes de afetar o worker (R-01) | [09:08] Diego |
 
 ## 6. Pontos para confirmação dos revisores
 
-**Não foram discutidos na reunião.** São leituras da análise da transcrição e do código, sinalizadas nos ADRs, que os revisores precisam confirmar ou corrigir.
+**Não foram discutidos na reunião.** São leituras da análise da transcrição e do código, que os revisores precisam confirmar ou corrigir.
 
 - **PC-01 Contagem de tentativas.** O "5 tentativas" de [09:17] Larissa foi lido como 1 envio inicial + 5 retentativas, única leitura que usa os cinco intervalos: 14h36m, perto das "quase 15 horas" de [09:17] Diego. Lido como 5 envios no total ("total 5 tentativas", [09:48] Larissa), a janela cai para 2h36m. → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
-- **PC-02 Assinatura na rotação.** Ninguém disse como a secret antiga "fica válida" num envio de saída ([09:21] Sofia). Proposta: duas assinaturas, nova e antiga, durante as 24h, a validar na revisão de segurança ([09:46] Sofia). → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
+- **PC-02 Formato da assinatura.** Ninguém disse como a secret antiga "fica válida" num envio de saída ([09:21] Sofia), nem se o timestamp do envio ([09:44] Diego) entra no HMAC. Proposta: duas assinaturas, nova e antiga, durante as 24h, e timestamp fora do cálculo, leitura literal da decisão ([09:22] Sofia); tudo a validar na revisão de segurança ([09:46] Sofia). → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
 - **PC-03 Ordem sob retry.** Mesmo com um único worker ([09:12] Diego), um evento em backoff pode ser ultrapassado pelo seguinte do mesmo pedido. Proposta: limitação conhecida, sem bloqueio por pedido; os clientes só querem saber se cada pedido mudou ([09:14] Marcos). → [ADR-002](./adrs/ADR-002-worker-em-processo-separado-com-polling.md), [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
-- **PC-04 Armazenamento da secret.** O HMAC exige a secret recuperável, não um hash como a senha (`prisma/schema.prisma`, L28). Proposta: deixar a forma de guardá-la para a revisão de segurança ([09:46] Sofia) e mostrar a secret só na criação e na rotação. → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
-- **PC-05 Id da DLQ.** O replay recebe o id do evento na DLQ ([09:18] Diego), mas a reunião não previu listar a DLQ. Proposta: expor o id no log e no histórico de entregas, sem endpoint novo (detalhado no FDD). → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+- **PC-04 Armazenamento da secret.** O HMAC exige a secret recuperável, não um hash como a senha (`prisma/schema.prisma`). Proposta: deixar a forma de guardá-la para a revisão de segurança ([09:46] Sofia) e mostrar a secret só na criação e na rotação. → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
+- **PC-05 Id da DLQ.** O replay recebe o id do evento na DLQ ([09:18] Diego), mas a reunião não previu listar a DLQ. Proposta: expor o id no log e no histórico de entregas, sem endpoint novo. → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
 
 ## 7. Impacto e riscos
 
-- **IMP-01 Código.** A transação do `changeStatus` ganha a leitura dos webhooks inscritos e a inserção na outbox ([09:34] Bruno, [09:40] Bruno), e o contrato de `PATCH /orders/:id/status` não muda (`src/modules/orders/order.routes.ts`, L19-23). Módulo, entry-point e tabelas novas: detalhado no FDD.
+- **IMP-01 Código.** A transação do `changeStatus` ganha a leitura dos webhooks inscritos e a inserção na outbox ([09:34] Bruno, [09:40] Bruno), e o contrato de `PATCH /orders/:id/status` não muda (`src/modules/orders/order.routes.ts`).
 - **IMP-02 Operação.** Um processo a mais para operar ([09:11] Diego), consultando o MySQL a cada 2s.
 - **IMP-03 Clientes.** Verificar a assinatura ([09:20] Sofia) e deduplicar pelo `X-Event-Id` ([09:25] Diego), com documentação no portal ([09:26] Marcos).
 

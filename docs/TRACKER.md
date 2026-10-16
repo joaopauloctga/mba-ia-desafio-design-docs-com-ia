@@ -2,7 +2,7 @@
 
 Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adrs/README.md) e do [FDD](./FDD.md) à sua origem: uma fala da [transcrição](../TRANSCRICAO.md) ou um arquivo que já existe no código.
 
-**Como ler.** Cada linha é um item, identificado pelo rótulo que ele tem no próprio documento (conversão abaixo). `Fonte` diz de onde ele vem: `TRANSCRICAO`, com o `[hh:mm] Nome` da fala que sustenta o item (em geral a que fechou a decisão), ou `CODIGO`, com o caminho de um arquivo que existe hoje; linha e símbolo, quando ajudam, ficam no resumo. Cada linha tem uma origem só. Quando um item tem duas origens relevantes, ganha uma segunda linha com sufixo (`FDD-INT-01b`). Arquivos que a feature ainda vai criar (`src/worker.ts`, `src/modules/webhooks/*`, a migration nova e `tests/webhooks.test.ts`) nunca são fonte `CODIGO`: os itens sobre eles apontam para a fala que os motivou. No resumo, *(proposta)* marca proposta de implementação, *(interpretação)* marca leitura posterior à reunião e *(plausível, não discutida)* marca alternativa que ninguém levantou; as três apontam para a fala ou o arquivo que as motiva.
+**Como ler.** Cada linha é um item, identificado pelo rótulo que ele tem no próprio documento (conversão abaixo). `Fonte` diz de onde ele vem: `TRANSCRICAO`, com o `[hh:mm] Nome` da fala que sustenta o item (em geral a que fechou a decisão), ou `CODIGO`, com o caminho de um arquivo que existe hoje; linha e símbolo, quando ajudam, ficam no resumo. Cada linha tem uma origem só. Quando um item tem duas origens relevantes, ganha uma segunda linha com sufixo (`FDD-INT-01b`). Os arquivos marcados (novo, a criar) nos documentos, como `src/worker.ts`, `src/modules/webhooks/*`, a migration nova e `tests/webhooks.test.ts`, nunca são fonte `CODIGO`: os itens sobre eles apontam para a fala que os motivou. No resumo, *(proposta)* marca proposta de implementação, *(interpretação)* marca leitura posterior à reunião e *(plausível, não discutida)* marca alternativa que ninguém levantou; as três apontam para a fala ou o arquivo que as motiva.
 
 **Legenda: rótulo no documento → ID no tracker, e o tipo**
 
@@ -14,7 +14,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | ID | Documento | Tipo | Conteúdo (resumo) | Fonte | Localização |
 | --- | --- | --- | --- | --- | --- |
 | PRD-MET-01 | docs/PRD.md | Métrica | Tempo da mudança de status até a chegada da notificação abaixo de 10s, com até 2s de espera do polling *(interpretação)* | TRANSCRICAO | [09:02] Marcos |
-| PRD-MET-02 | docs/PRD.md | Métrica | 3 de 3 clientes solicitantes integrados (Atlas Comercial, MaxDistribuição e Nova Cargo) | TRANSCRICAO | [09:00] Marcos |
+| PRD-MET-02 | docs/PRD.md | Métrica | 3 de 3 clientes solicitantes integrados (Atlas Comercial, MaxDistribuição e Nova Cargo): meta *(proposta)* deste PRD, não dita na reunião | TRANSCRICAO | [09:00] Marcos |
 | PRD-MET-03 | docs/PRD.md | Métrica | Feature em produção até o fim de novembro, prazo pedido pela Atlas | TRANSCRICAO | [09:45] Marcos |
 | PRD-MET-03b | docs/PRD.md | Métrica | Estimativa de 3 sprints para a entrega, com a revisão de segurança no fim | TRANSCRICAO | [09:47] Larissa |
 | PRD-MET-04 | docs/PRD.md | Métrica | Janela coberta pelas retentativas: 14h36m, leitura das "quase 15 horas" *(interpretação)* | TRANSCRICAO | [09:17] Diego |
@@ -87,9 +87,10 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | PRD-RISK-06 | docs/PRD.md | Risco | Rajada de mudanças de status sobrecarrega o cliente (Média/Médio) | TRANSCRICAO | [09:38] Diego |
 | PRD-RISK-07 | docs/PRD.md | Risco | Eventos do mesmo pedido chegam fora de ordem (Baixa/Baixo) | TRANSCRICAO | [09:13] Larissa |
 | PRD-RISK-08 | docs/PRD.md | Risco | Qualquer usuário autenticado gerencia webhooks de qualquer cliente, aceito "Por enquanto" (Média/Médio) | TRANSCRICAO | [09:37] Sofia |
+| PRD-RISK-09 | docs/PRD.md | Risco | Endpoint lento atrasa a fila de notificações de todos os clientes, e a meta de 10s pode não valer enquanto isso (Média/Médio) | TRANSCRICAO | [09:42] Diego |
 | PRD-AC-01 | docs/PRD.md | Critério de Aceite | Cadastro válido cria o webhook e a resposta traz a secret gerada pela plataforma | TRANSCRICAO | [09:31] Marcos |
 | PRD-AC-01b | docs/PRD.md | Critério de Aceite | Cadastro com URL http é recusado com erro de validação | TRANSCRICAO | [09:23] Sofia |
-| PRD-AC-02 | docs/PRD.md | Critério de Aceite | Pedido vira status inscrito e a notificação chega em menos de 10s (identificador e assinatura vêm de PRD-FR-15 e PRD-FR-08) | TRANSCRICAO | [09:02] Marcos |
+| PRD-AC-02 | docs/PRD.md | Critério de Aceite | Pedido vira status inscrito e, com os endpoints respondendo dentro do prazo, a notificação chega em menos de 10s (identificador e assinatura vêm de PRD-FR-15 e PRD-FR-08) | TRANSCRICAO | [09:02] Marcos |
 | PRD-AC-03 | docs/PRD.md | Critério de Aceite | Mudança para status fora do filtro do webhook não gera notificação para ele | TRANSCRICAO | [09:33] Marcos |
 | PRD-AC-04 | docs/PRD.md | Critério de Aceite | Cliente em manutenção de 2h recebe por retentativa; fora a janela toda de 14h36m *(interpretação)*, o evento vai para a DLQ | TRANSCRICAO | [09:16] Diego |
 | PRD-AC-05 | docs/PRD.md | Critério de Aceite | Reprocessamento negado a quem não é ADMIN; o ADMIN reentrega com o mesmo `X-Event-Id` *(interpretação)* e fica registrado | TRANSCRICAO | [09:36] Sofia |
@@ -98,7 +99,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | PRD-AC-08 | docs/PRD.md | Critério de Aceite | Webhook desativado ou removido não é notificado | TRANSCRICAO | [09:33] Bruno |
 | PRD-AC-09 | docs/PRD.md | Critério de Aceite | Cliente lento ou fora do ar não atrasa a mudança de status | TRANSCRICAO | [09:04] Bruno |
 | RFC-PROP-01 | docs/RFC.md | Proposta | Captura: evento gravado na outbox dentro da transação do `changeStatus`; commit e rollback valem para status e evento | TRANSCRICAO | [09:06] Diego |
-| RFC-PROP-02 | docs/RFC.md | Proposta | Despacho: worker separado da API (entry-point `src/worker.ts`, novo, a criar) que lê os pendentes a cada 2s | TRANSCRICAO | [09:48] Larissa |
+| RFC-PROP-02 | docs/RFC.md | Proposta | Despacho: worker separado da API, com entry-point `src/worker.ts` (novo, a criar), que lê os pendentes a cada 2s | TRANSCRICAO | [09:48] Larissa |
 | RFC-PROP-03 | docs/RFC.md | Proposta | Entrega segura: HMAC-SHA256 do corpo no `X-Signature`, secret por endpoint e rotação com a antiga válida por 24h | TRANSCRICAO | [09:22] Sofia |
 | RFC-PROP-03b | docs/RFC.md | Proposta | URL só HTTPS, e payload acima do limite é erro, não truncamento | TRANSCRICAO | [09:23] Sofia |
 | RFC-PROP-04 | docs/RFC.md | Proposta | Confiabilidade: at-least-once com `X-Event-Id`, retry 1m/5m/30m/2h/12h, DLQ em tabela separada e replay só por ADMIN | TRANSCRICAO | [09:48] Larissa |
@@ -106,7 +107,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | RFC-PROP-05b | docs/RFC.md | Proposta | Editar, remover e listar os webhooks de um customer | TRANSCRICAO | [09:33] Bruno |
 | RFC-PROP-05c | docs/RFC.md | Proposta | Ver as últimas 100 entregas de um webhook | TRANSCRICAO | [09:34] Marcos |
 | RFC-PROP-05d | docs/RFC.md | Proposta | O customer vem na requisição, não do JWT | TRANSCRICAO | [09:32] Larissa |
-| RFC-PROP-06 | docs/RFC.md | Proposta | Padrões do projeto: webhook como módulo igual aos outros (`src/modules/webhooks/`, novo, a criar), com `AppError`, códigos de erro, error middleware, Pino e Zod (`requireRole`, UUID e Prisma por processo: ADR-006f, ADR-006i e ADR-006h) | TRANSCRICAO | [09:30] Larissa |
+| RFC-PROP-06 | docs/RFC.md | Proposta | Padrões do projeto: webhook como módulo igual aos outros, em `src/modules/webhooks/` (novo, a criar), com `AppError`, códigos de erro, error middleware, Pino e Zod (`requireRole`, UUID e Prisma por processo: ADR-006f, ADR-006i e ADR-006h) | TRANSCRICAO | [09:30] Larissa |
 | RFC-ALT-01 | docs/RFC.md | Alternativa Descartada | HTTP síncrono no `changeStatus`: cliente lento travaria mudanças de status; cliente fora do ar não justifica rollback | TRANSCRICAO | [09:04] Bruno |
 | RFC-ALT-02 | docs/RFC.md | Alternativa Descartada | Redis Streams ou outra fila externa: mais infraestrutura, "overengineering" para um time pequeno | TRANSCRICAO | [09:07] Diego |
 | RFC-ALT-03 | docs/RFC.md | Alternativa Descartada | Trigger de banco: MySQL sem LISTEN/NOTIFY, avisar o worker exigiria improviso; o polling de 2s já atende | TRANSCRICAO | [09:09] Diego |
@@ -119,7 +120,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | RFC-OQ-04b | docs/RFC.md | Questão em Aberto | Hoje `User` não tem vínculo com `Customer` (model `User`, L25-38): qualquer usuário autenticado gerencia webhooks de qualquer customer | CODIGO | prisma/schema.prisma |
 | RFC-OQ-05 | docs/RFC.md | Questão em Aberto | Retenção da outbox, arquivando as entregues "depois de 30 dias ou assim": fora do escopo da feature | TRANSCRICAO | [09:08] Diego |
 | RFC-PC-01 | docs/RFC.md | Ponto para Confirmação | Contagem lida como 1 envio inicial + 5 retentativas (14h36m, perto das "quase 15 horas"); como 5 envios no total, 2h36m *(interpretação)* | TRANSCRICAO | [09:17] Diego |
-| RFC-PC-02 | docs/RFC.md | Ponto para Confirmação | Duas assinaturas, nova e antiga, durante as 24h da rotação, a validar na revisão de segurança *(proposta)* | TRANSCRICAO | [09:21] Sofia |
+| RFC-PC-02 | docs/RFC.md | Ponto para Confirmação | Formato da assinatura: duas assinaturas, nova e antiga, durante as 24h da rotação, e timestamp do envio fora do HMAC, a validar na revisão de segurança *(proposta)* | TRANSCRICAO | [09:21] Sofia |
 | RFC-PC-03 | docs/RFC.md | Ponto para Confirmação | Mesmo com um único worker, um evento em backoff pode ser ultrapassado pelo seguinte do mesmo pedido: limitação conhecida *(proposta)* | TRANSCRICAO | [09:12] Diego |
 | RFC-PC-04 | docs/RFC.md | Ponto para Confirmação | Forma de guardar a secret decidida na revisão de segurança; secret mostrada só na criação e na rotação *(proposta)* | TRANSCRICAO | [09:46] Sofia |
 | RFC-PC-04b | docs/RFC.md | Ponto para Confirmação | O HMAC exige a secret recuperável, ao contrário da senha, guardada só como hash (`passwordHash`, L28) | CODIGO | prisma/schema.prisma |
@@ -155,7 +156,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | ADR-004-ALT-1 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Alternativa Descartada | Secret global da plataforma: "Senão se vaza uma, vaza tudo" | TRANSCRICAO | [09:21] Sofia |
 | ADR-004-ALT-2 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Alternativa Descartada | Confiar só no TLS, sem assinatura *(plausível, não discutida)*: não prova ao cliente a origem nem a integridade | TRANSCRICAO | [09:19] Sofia |
 | ADR-004-ALT-3 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Alternativa Descartada | Uma única assinatura durante a rotação *(plausível, não discutida)*: o cliente não teria tempo de migrar | TRANSCRICAO | [09:21] Sofia |
-| ADR-004-ALT-4 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Alternativa Descartada | Assinar o timestamp junto com o corpo *(plausível, não discutida)*: a decisão é HMAC só sobre o corpo | TRANSCRICAO | [09:22] Sofia |
+| ADR-004-ALT-4 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Alternativa Descartada | Assinar o timestamp junto com o corpo *(plausível, não discutida)*: descarte por *(interpretação)* da decisão literal, HMAC só sobre o corpo; a pergunta vai para a revisão de segurança | TRANSCRICAO | [09:22] Sofia |
 | ADR-004-CONS-1 | docs/adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md | Trade-off | Secret recuperável, duas assinaturas por 24h e revisão de segurança, em troca de vazamento isolado e verificação padrão | TRANSCRICAO | [09:46] Sofia |
 | ADR-005 | docs/adrs/ADR-005-entrega-at-least-once-com-x-event-id.md | Decisão | At-least-once com `X-Event-Id` para deduplicação do lado do cliente | TRANSCRICAO | [09:26] Larissa |
 | ADR-005-ALT-1 | docs/adrs/ADR-005-entrega-at-least-once-com-x-event-id.md | Alternativa Descartada | Exactly-once: "exigiria coordenação dos dois lados e fica muito mais complexo" | TRANSCRICAO | [09:25] Diego |
@@ -203,7 +204,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-FLUXO-03 | docs/FDD.md | Fluxo | Retry: esperas de 1m/5m/30m/2h/12h; o 6º envio com falha vai para a DLQ; erros determinísticos sem retry | TRANSCRICAO | [09:17] Larissa |
 | FDD-FLUXO-04 | docs/FDD.md | Fluxo | DLQ numa transação, com `deadLetterId` no histórico; o replay "Recoloca na outbox como pendente", com o mesmo `eventId` | TRANSCRICAO | [09:18] Diego |
 | FDD-FLUXO-05 | docs/FDD.md | Fluxo | Rotação: secret anterior válida por 24h, com duas assinaturas na janela *(proposta)* | TRANSCRICAO | [09:21] Sofia |
-| FDD-FLUXO-06 | docs/FDD.md | Fluxo | Desativação e remoção lógica: sem eventos novos; pendentes encerrados com `WEBHOOK_ENDPOINT_INACTIVE` *(proposta)* | TRANSCRICAO | [09:33] Bruno |
+| FDD-FLUXO-06 | docs/FDD.md | Fluxo | Desativação e remoção lógica: sem eventos novos; pendentes vão para a DLQ com `WEBHOOK_ENDPOINT_INACTIVE`, sem retry *(proposta)* | TRANSCRICAO | [09:33] Bruno |
 | FDD-CONTRATO-01 | docs/FDD.md | Contrato | `POST /api/v1/webhooks` com url e lista de status; 201 com a secret gerada pela plataforma, mostrada só aqui | TRANSCRICAO | [09:31] Marcos |
 | FDD-CONTRATO-01b | docs/FDD.md | Contrato | `customerId` vem na requisição, não do JWT; usar o body, e não o path, é *(proposta)* | TRANSCRICAO | [09:32] Larissa |
 | FDD-CONTRATO-02 | docs/FDD.md | Contrato | `GET /api/v1/webhooks?customerId=`: webhooks de um customer, sem a secret, com paginação *(proposta)* | TRANSCRICAO | [09:33] Bruno |
@@ -224,9 +225,9 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-ERR-11 | docs/FDD.md | Erro | `WEBHOOK_DELIVERY_HTTP_ERROR`: resposta fora de 2xx, com retry (só 2xx como sucesso é *(proposta)*) | TRANSCRICAO | [09:15] Diego |
 | FDD-ERR-12 | docs/FDD.md | Erro | `WEBHOOK_DELIVERY_NETWORK_ERROR`: DNS, conexão recusada ou TLS, com retry ("Se o cliente tá offline") | TRANSCRICAO | [09:14] Larissa |
 | FDD-ERR-13 | docs/FDD.md | Erro | `WEBHOOK_PAYLOAD_TOO_LARGE`: corpo acima de 64KB é erro e vai direto para a DLQ, sem retry *(interpretação)* | TRANSCRICAO | [09:24] Larissa |
-| FDD-ERR-14 | docs/FDD.md | Erro | `WEBHOOK_SECRET_REQUIRED`: endpoint sem secret utilizável vai direto para a DLQ (guarda *(proposta)*) | TRANSCRICAO | [09:28] Bruno |
+| FDD-ERR-14 | docs/FDD.md | Erro | `WEBHOOK_SECRET_REQUIRED`: endpoint sem secret utilizável vai direto para a DLQ; guarda defensiva *(proposta)*, inalcançável enquanto a secret for gerada no cadastro (o código foi citado só como exemplo de nome) | TRANSCRICAO | [09:28] Bruno |
 | FDD-ERR-15 | docs/FDD.md | Erro | `WEBHOOK_MAX_ATTEMPTS_EXCEEDED`: motivo da DLQ quando o 6º envio falha | TRANSCRICAO | [09:17] Larissa |
-| FDD-ERR-16 | docs/FDD.md | Erro | `WEBHOOK_ENDPOINT_INACTIVE`: endpoint desativado ou removido; a linha vira FAILED sem DLQ *(proposta)* | TRANSCRICAO | [09:21] Bruno |
+| FDD-ERR-16 | docs/FDD.md | Erro | `WEBHOOK_ENDPOINT_INACTIVE`: endpoint desativado ou removido; o evento vai para a DLQ sem retry e pode ser reprocessado depois de reativar o endpoint *(proposta)* | TRANSCRICAO | [09:21] Bruno |
 | FDD-RES-01 | docs/FDD.md | Resiliência | Transação do `changeStatus` sem chamada de rede: só 1 leitura e 1 inserção em lote | TRANSCRICAO | [09:04] Bruno |
 | FDD-RES-02 | docs/FDD.md | Resiliência | Isolamento de processo: reiniciar a API não interrompe as entregas, e vice-versa | TRANSCRICAO | [09:11] Diego |
 | FDD-RES-03 | docs/FDD.md | Resiliência | Polling a cada 2s, sem sobreposição de ciclos *(proposta)* | TRANSCRICAO | [09:09] Diego |
@@ -292,7 +293,7 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-CAT-08 | docs/FDD.md | Critério de Aceite | Falhas seguidas gravam esperas de 1m, 5m, 30m, 2h e 12h | TRANSCRICAO | [09:17] Larissa |
 | FDD-CAT-09 | docs/FDD.md | Critério de Aceite | 6ª falha: `FAILED`, DLQ com `WEBHOOK_MAX_ATTEMPTS_EXCEEDED` e nenhum 7º envio | TRANSCRICAO | [09:15] Diego |
 | FDD-CAT-10 | docs/FDD.md | Critério de Aceite | Payload de 65.537 bytes: DLQ com `WEBHOOK_PAYLOAD_TOO_LARGE`, sem chamada HTTP *(interpretação)* | TRANSCRICAO | [09:24] Larissa |
-| FDD-CAT-11 | docs/FDD.md | Critério de Aceite | Endpoint inativo ou removido: `FAILED` com `WEBHOOK_ENDPOINT_INACTIVE`, sem DLQ *(proposta)* | TRANSCRICAO | [09:21] Bruno |
+| FDD-CAT-11 | docs/FDD.md | Critério de Aceite | Endpoint inativo ou removido, inclusive no replay: DLQ com `WEBHOOK_ENDPOINT_INACTIVE`, sem retry *(proposta)* | TRANSCRICAO | [09:21] Bruno |
 | FDD-CAT-12 | docs/FDD.md | Critério de Aceite | Replay: OPERATOR recebe 403; ADMIN, 202 com o mesmo `eventId` e log com `userId`; repetido, 409; inexistente, 404 | TRANSCRICAO | [09:36] Sofia |
 | FDD-CAT-13 | docs/FDD.md | Critério de Aceite | Rotação: duas assinaturas verificáveis durante 24h *(proposta)*; depois, só a nova | TRANSCRICAO | [09:21] Sofia |
 | FDD-CAT-14 | docs/FDD.md | Critério de Aceite | Histórico com no máximo 100 itens, em ordem decrescente | TRANSCRICAO | [09:34] Marcos |
@@ -317,8 +318,8 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 
 Números gerados pelo script de validação do tracker (Python, só biblioteca padrão), que também confere cada fala na transcrição e cada caminho no repositório.
 
-- **Linhas:** 299 (PRD 84, RFC 39, ADRs 46, FDD 130), das quais 37 são uma origem a mais de um item (sufixo de letra, como `FDD-INT-01b`).
-- **`TRANSCRICAO`:** 259 linhas (86,6%), apontando para 66 falas distintas; toda `Localização` existe na transcrição como `[hh:mm] Nome`.
+- **Linhas:** 300 (PRD 85, RFC 39, ADRs 46, FDD 130), das quais 37 são uma origem a mais de um item (sufixo de letra, como `FDD-INT-01b`).
+- **`TRANSCRICAO`:** 260 linhas (86,7%), apontando para 66 falas distintas; toda `Localização` existe na transcrição como `[hh:mm] Nome`.
 - **`CODIGO`:** 40 linhas, apontando para 22 arquivos distintos; todos existem no repositório e nenhum é arquivo novo da feature.
-- **Cobertura dos itens rotulados:** PRD 75/75 · RFC 30/30 · ADRs 45/45 · FDD 112/112; total 262/262 (100,0%).
+- **Cobertura dos itens rotulados:** PRD 76/76 · RFC 30/30 · ADRs 45/45 · FDD 112/112; total 263/263 (100,0%).
 - **Rótulos sem linha no tracker:** 0. **Linhas sem rótulo no documento:** 0.

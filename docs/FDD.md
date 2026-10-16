@@ -225,10 +225,10 @@ model WebhookDeadLetter {
 | --- | --- | --- |
 | `customerId` | Não vem do JWT. A reunião deixou "no body ou no path"; este FDD usa o body (proposta de implementação; ver CT-01). FK para `customers` | [09:32] Larissa |
 | `url` | `https` obrigatório (ERR-02) | [09:23] Sofia |
-| `secret` | Gerada pela plataforma; sai só no cadastro e na rotação. Precisa ser recuperável (o HMAC é recalculado a cada envio); em claro ou cifrada, decide a revisão de segurança (PC-04 do RFC) | [09:31] Marcos, [09:46] Sofia |
+| `secret` | Gerada pela plataforma; sai só no cadastro e na rotação. Precisa ser recuperável (o HMAC é recalculado a cada envio); em claro ou cifrada, decide a revisão de segurança (PC-04 do RFC); cifrada, exigiria uma chave nova no ambiente (seção 12, Configuração) | [09:31] Marcos, [09:46] Sofia |
 | `previousSecret`, `previousSecretExpiresAt` | Secret anterior e fim da validade (rotação + 24h); uma só por vez (proposta de implementação) | [09:21] Sofia |
 | `events` | Lista JSON não vazia, sem repetição, só de status que são destino de transição: `PAID`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED` (proposta de implementação) | [09:33] Marcos |
-| `active` | Inativo não recebe eventos novos; os pendentes são encerrados pelo worker (ERR-16) | [09:21] Bruno |
+| `active` | Inativo não recebe eventos novos; o worker manda os pendentes para a DLQ (ERR-16) | [09:21] Bruno |
 | `deletedAt` | Remoção lógica: o DELETE preenche `deletedAt` e grava `active = false`; histórico e DLQ ficam no banco (proposta de implementação) | [09:33] Bruno, [09:18] Diego |
 
 Sem tabela de junção para `events`: o filtro em memória supõe poucos endpoints por customer; se isso mudar, vai para o SQL com `JSON_CONTAINS` (proposta de implementação).
@@ -247,7 +247,7 @@ O índice `(status, createdAt)` atende "índice no campo de status" e "em create
 
 **DADOS-04 `webhook_deliveries`.** Uma linha por processamento: cada tentativa HTTP e cada encerramento sem chamada (payload grande, secret ausente, endpoint inativo). É o histórico pedido em [09:34] Marcos, com o `deadLetterId` (PC-05 do RFC). `responseBody` guarda até 4.096 caracteres, e o payload é lido da outbox, sem cópia por tentativa (proposta de implementação).
 
-**DADOS-05 `webhook_dead_letter`** (payload, motivo e timestamp, [09:18] Diego). `reason` é `WEBHOOK_MAX_ATTEMPTS_EXCEEDED`, `WEBHOOK_PAYLOAD_TOO_LARGE` ou `WEBHOOK_SECRET_REQUIRED`; no esgotamento, `lastErrorCode` guarda o erro da última tentativa. `replayedAt` e `replayedById` registram o replay, além do log de [09:36] Sofia; cada linha aceita um único replay, e uma nova falha gera outra linha (proposta de implementação).
+**DADOS-05 `webhook_dead_letter`** (payload, motivo e timestamp, [09:18] Diego). `reason` é `WEBHOOK_MAX_ATTEMPTS_EXCEEDED`, `WEBHOOK_PAYLOAD_TOO_LARGE`, `WEBHOOK_SECRET_REQUIRED` ou `WEBHOOK_ENDPOINT_INACTIVE`; no esgotamento, `lastErrorCode` guarda o erro da última tentativa. `replayedAt` e `replayedById` registram o replay, além do log de [09:36] Sofia; cada linha aceita um único replay, e uma nova falha gera outra linha (proposta de implementação).
 
 **DADOS-06 relações inversas.** `Customer` (`prisma/schema.prisma:40-54`) ganha `webhookEndpoints` e `User` (`prisma/schema.prisma:25-38`), `replayedDeadLetters`. Nenhuma coluna existente muda.
 
@@ -304,7 +304,7 @@ sequenceDiagram
     W->>DB: lê PENDING vencidos, mais antigos primeiro, e reserva como PROCESSING
     loop cada linha, em ordem
       alt endpoint inativo, sem secret ou corpo acima de 64KB
-        W->>DB: FAILED (com DLQ, exceto endpoint inativo)
+        W->>DB: FAILED e DLQ, sem retry
       else pronto para enviar
         W->>EP: POST assinado, timeout de 10s
         W->>DB: 2xx vira DELIVERED; o resto segue o FLUXO-03
@@ -330,8 +330,8 @@ const RESPONSE_BODY_LIMIT = 4_096; // proposta de implementação
 4. **Reserva**: `updateMany` para `PROCESSING`, condicionado a `status = PENDING`.
 5. **Envio sequencial**, na ordem lida: paralelizar teria o efeito de vários workers, que perdem a garantia de ordem ([09:12] Diego). Para cada linha:
    1. lê o endpoint; usa a URL atual do cadastro e o payload do snapshot (proposta de implementação);
-   2. inativo ou removido: `FAILED` com ERR-16, sem DLQ;
-   3. sem secret utilizável: DLQ com ERR-14 (guarda defensiva);
+   2. inativo ou removido: DLQ com ERR-16, sem retry;
+   3. sem secret utilizável: DLQ com ERR-14, guarda defensiva (proposta de implementação), inalcançável enquanto a secret for sempre gerada no cadastro;
    4. corpo acima de 64KB (65.536 bytes em UTF-8): DLQ com ERR-13, sem retry e sem afetar o status já commitado;
    5. assina o corpo e monta os headers (CT-08);
    6. envia com `fetch` nativo: `POST`, `redirect: 'manual'` (um 3xx é falha; proposta de implementação) e `signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)` ([09:42] Diego);
@@ -353,7 +353,7 @@ const RESPONSE_BODY_LIMIT = 4_096; // proposta de implementação
 | 5 | 2h depois | 12h | 5 | 2h36m |
 | 6 | 12h depois | DLQ (`WEBHOOK_MAX_ATTEMPTS_EXCEEDED`) | 6 | **14h36m** |
 
-A espera conta do fim da tentativa que falhou (mais até 2s de polling). Em cada falha, numa transação, o worker grava a entrega (`success = false`, `errorCode`, resposta e `durationMs`) e incrementa `attempts`. Abaixo de 6, a linha volta a `PENDING` com `nextAttemptAt = now() + BACKOFF_MS[attempts - 1]` e `lastError`, e sai o log `webhook_retry_scheduled`; em 6, segue o FLUXO-04. ERR-13 e ERR-14 vão direto para a DLQ e ERR-16 encerra sem DLQ, porque repetir daria o mesmo resultado; para o 64KB, é a leitura do ADR-003 para o "erro caso ultrapasse" de [09:24] Larissa.
+A espera conta do fim da tentativa que falhou (mais até 2s de polling). Em cada falha, numa transação, o worker grava a entrega (`success = false`, `errorCode`, resposta e `durationMs`) e incrementa `attempts`. Abaixo de 6, a linha volta a `PENDING` com `nextAttemptAt = now() + BACKOFF_MS[attempts - 1]` e `lastError`, e sai o log `webhook_retry_scheduled`; em 6, segue o FLUXO-04. ERR-13, ERR-14 e ERR-16 vão direto para a DLQ, sem retry, porque repetir daria o mesmo resultado (no ERR-16, até o endpoint ser reativado); para o 64KB, é a leitura do ADR-003 para o "erro caso ultrapasse" de [09:24] Larissa.
 
 ```mermaid
 stateDiagram-v2
@@ -361,14 +361,14 @@ stateDiagram-v2
   PENDING --> PROCESSING: worker reserva o lote
   PROCESSING --> DELIVERED: resposta 2xx
   PROCESSING --> PENDING: falha com envios restantes, ou recuperação
-  PROCESSING --> FAILED: DLQ ou endpoint inativo
+  PROCESSING --> FAILED: DLQ, por esgotamento ou erro sem retry
   FAILED --> PENDING: replay por ADMIN
   DELIVERED --> [*]
 ```
 
 ### FLUXO-04: DLQ e replay
 
-**Entrada na DLQ** (6ª falha, ERR-13 ou ERR-14), numa transação: cria a linha em `webhook_dead_letter` "com a payload, motivo da falha e timestamp" ([09:18] Diego), grava a entrega com `deadLetterId` e marca a outbox como `FAILED`. Depois do commit, o log `webhook_moved_to_dead_letter` traz o `deadLetterId`; com ele e com o histórico (CT-06), o ADMIN acha o id do replay sem endpoint de listagem (PC-05 do RFC).
+**Entrada na DLQ** (6ª falha, ERR-13, ERR-14 ou ERR-16), numa transação: cria a linha em `webhook_dead_letter` "com a payload, motivo da falha e timestamp" ([09:18] Diego), grava a entrega com `deadLetterId` e marca a outbox como `FAILED`. Depois do commit, o log `webhook_moved_to_dead_letter` traz o `deadLetterId`; com ele e com o histórico (CT-06), o ADMIN acha o id do replay sem endpoint de listagem (PC-05 do RFC).
 
 **Replay** (CT-07): "Recoloca na outbox como pendente" ([09:18] Diego).
 
@@ -390,7 +390,7 @@ sequenceDiagram
 2. `updateMany` na DLQ com `where: { id, replayedAt: null }`, gravando `replayedAt` e `replayedById`; se nada mudar, uma leitura pelo id decide entre 404 e 409. O `where` condicional também barra replays simultâneos (proposta de implementação).
 3. Na mesma transação, a outbox volta a `PENDING` com `attempts = 0`, `nextAttemptAt = now()`, `lastError = null` e o mesmo `eventId`, para o cliente deduplicar ([09:25] Diego). Zerar `attempts` devolve os 6 envios (proposta de implementação).
 4. Log `webhook_dead_letter_replayed` com `userId` e `requestId`: "tem que logar quem fez o replay, pra auditoria" ([09:36] Sofia).
-5. Com o endpoint inativo, o worker encerra a linha com ERR-16; para reprocessar, é preciso reativá-lo antes (CT-03). Endpoint removido não pode ser reativado, e o replay só encerra a linha.
+5. Com o endpoint inativo, o worker devolve o evento à DLQ com ERR-16, numa entrada nova, que pode ser reprocessada depois que o endpoint for reativado (CT-03). Endpoint removido não pode ser reativado: o evento fica na DLQ como evidência (proposta de implementação).
 
 ### FLUXO-05: rotação da secret
 
@@ -404,7 +404,7 @@ Regra da rotação: "a antiga fica válida por 24 horas em paralelo" ([09:21] So
 
 1. `PATCH` com `active: false` (CT-03) ou `DELETE` (CT-04, que também preenche `deletedAt`).
 2. Eventos novos param na hora: o filtro da inserção ignora endpoints inativos (FLUXO-01, passo 2).
-3. Linhas já na outbox são encerradas quando vencem, com `FAILED`, ERR-16 e uma entrega registrada, sem DLQ (proposta de implementação). Uma linha em espera de retry só é encerrada quando a espera vence; se o endpoint for reativado antes, o retry segue.
+3. Linhas já na outbox vão para a DLQ quando vencem, com ERR-16, sem retry e com uma entrega registrada (proposta de implementação); depois de reativar o endpoint, um ADMIN pode reprocessá-las (CT-07). Uma linha em espera de retry só vai para a DLQ quando a espera vence; se o endpoint for reativado antes, o retry segue.
 4. Histórico e DLQ continuam no banco, e CT-06 responde também para endpoints removidos.
 
 ## 7. Contratos públicos
@@ -481,7 +481,7 @@ Resposta `201 Created`:
 | 400 | `WEBHOOK_INVALID_URL` | URL sem `https` (ERR-02) |
 | 404 | `NOT_FOUND` | Customer inexistente, via `NotFoundError('Customer')` (`src/modules/customers/customer.service.ts:23-27`) |
 
-**Semântica.** Não idempotente: cada chamada cria um cadastro com secret própria, devolvida só aqui ([09:31] Marcos). Um customer pode ter vários, até com a mesma URL ([09:44] Sofia), sem checagem de duplicata (proposta de implementação). O customer é "passado no body ou no path. Não vem do JWT" ([09:32] Larissa); este FDD usa o body, como `createOrderSchema` (`src/modules/orders/order.schemas.ts:11-16`) (proposta de implementação). Vale para mudanças de status futuras.
+**Semântica.** Não idempotente: cada chamada cria um cadastro com secret própria, devolvida só aqui ([09:31] Marcos). Um customer pode ter vários ("cliente que tem vários", [09:44] Sofia); aceitar a mesma URL, sem checagem de duplicata, é proposta de implementação. O customer é "passado no body ou no path. Não vem do JWT" ([09:32] Larissa); este FDD usa o body, como `createOrderSchema` (`src/modules/orders/order.schemas.ts:11-16`) (proposta de implementação). Vale para mudanças de status futuras.
 
 ### CT-02: listar os webhooks de um customer
 
@@ -645,7 +645,7 @@ Resposta `202 Accepted`:
 
 ### CT-08: entrega ao cliente (saída)
 
-O worker envia um `POST` para a `url` do endpoint com o corpo **compacto**, exatamente como sai de `JSON.stringify`; a assinatura é calculada sobre esses bytes. O exemplo é real: com a secret de CT-01, o HMAC-SHA256 deste corpo é o valor do `X-Signature`.
+O worker envia um `POST` para a `url` do endpoint com o corpo **compacto**, exatamente como sai de `JSON.stringify`; a assinatura é calculada sobre esses bytes. O exemplo é real: com a secret de CT-01, o HMAC-SHA256 deste corpo é o valor do `X-Signature`. Como o `payload` fica numa coluna `Json` do MySQL, que normaliza a ordem das chaves ao gravar, o corpo efetivamente enviado pode ter as chaves em outra ordem que a do exemplo; a assinatura vale sempre sobre os bytes enviados.
 
 ```http
 POST /webhooks/oms HTTP/1.1
@@ -680,7 +680,7 @@ X-Signature: sha256=ff4f327ee11319c6b83685531578f409c426a53d5a814b63e34d95181075
 | `Content-Type` | `application/json` | — |
 | `X-Event-Id` | UUID do evento | Chave de deduplicação do cliente ([09:25] Diego) |
 | `X-Webhook-Id` | Id do endpoint | "pra cliente que tem vários conseguir saber qual cadastro caiu naquele envio" ([09:44] Sofia) |
-| `X-Timestamp` | ISO 8601 do envio | Muda a cada tentativa e não entra na assinatura. O formato é proposta de implementação |
+| `X-Timestamp` | ISO 8601 do envio | Muda a cada tentativa. Fica fora da assinatura por interpretação da decisão literal ([ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)), que a reunião não discutiu; a confirmar na revisão de segurança (PC-02 do RFC). O formato é proposta de implementação |
 | `X-Signature` | `sha256=<hex>` | HMAC-SHA256 do corpo bruto com a secret do endpoint ([09:22] Sofia); prefixo e hex são proposta de implementação. Na janela de rotação, duas assinaturas separadas por vírgula, a nova primeiro (PC-02 do RFC) |
 
 Exemplo de janela de rotação: com a secret de CT-01 como atual e `2b8f6d4a0c9e7b5f3a1d8c6e4b2f0a9d7c5e3b1f8a6d4c2e0b9f7a5d3c1e8b6f` como anterior, o mesmo corpo sai com `X-Signature: sha256=ff4f327ee11319c6b83685531578f409c426a53d5a814b63e34d9518107533ba,sha256=d2841dc35f61ea929eea261fe43d3e8a09f3362c0b30a7680bd3c7351f28deb6`.
@@ -727,9 +727,9 @@ Lista `as const` em `webhook.errors.ts`, gravada em `webhook_deliveries.errorCod
 | ERR-11 | `WEBHOOK_DELIVERY_HTTP_ERROR` | Sim | Só na 6ª falha | Status fora de 2xx, inclusive 3xx e 4xx (proposta de implementação) | [09:15] Diego (falha segue para o backoff) |
 | ERR-12 | `WEBHOOK_DELIVERY_NETWORK_ERROR` | Sim | Só na 6ª falha | DNS, conexão recusada, TLS ou conexão encerrada antes da resposta | [09:14] Larissa: "Se o cliente tá offline" |
 | ERR-13 | `WEBHOOK_PAYLOAD_TOO_LARGE` | Não | Sim, na hora | Corpo serializado acima de 64KB | [09:23] Sofia, [09:24] Larissa |
-| ERR-14 | `WEBHOOK_SECRET_REQUIRED` | Não | Sim, na hora | Endpoint sem secret utilizável (guarda defensiva, proposta de implementação) | [09:28] Bruno (código citado) |
+| ERR-14 | `WEBHOOK_SECRET_REQUIRED` | Não | Sim, na hora | Endpoint sem secret utilizável. Guarda defensiva (proposta de implementação), inalcançável enquanto a secret for sempre gerada no cadastro | [09:28] Bruno (código citado só como exemplo de nome) |
 | ERR-15 | `WEBHOOK_MAX_ATTEMPTS_EXCEEDED` | — | É o `reason` da DLQ | 6º envio falhou (1 + 5 retentativas); `lastErrorCode` guarda o erro real (ERR-10, ERR-11 ou ERR-12) | [09:15] Diego, [09:17] Larissa |
-| ERR-16 | `WEBHOOK_ENDPOINT_INACTIVE` | Não | Não; a linha vira `FAILED` | Endpoint desativado ou removido no processamento (proposta de implementação) | [09:21] Bruno ("estado ativo") |
+| ERR-16 | `WEBHOOK_ENDPOINT_INACTIVE` | Não | Sim, na hora | Endpoint desativado ou removido no processamento; o evento pode ser reprocessado depois que o endpoint for reativado (proposta de implementação) | [09:21] Bruno ("estado ativo") |
 
 ## 9. Estratégias de resiliência
 
@@ -741,7 +741,7 @@ Lista `as const` em `webhook.errors.ts`, gravada em `webhook_deliveries.errorCod
 | RES-04 | Lote pequeno e sequencial | 10 linhas por ciclo (proposta de implementação), uma a uma, por `createdAt` | FLUXO-02 | [09:08] Diego, [09:12] Diego |
 | RES-05 | Timeout | 10s por envio (`AbortSignal.timeout`), da conexão à leitura do corpo | FLUXO-02, ERR-10 | [09:42] Diego |
 | RES-06 | Retry com backoff | 1m/5m/30m/2h/12h; até 6 envios de cada evento para cada endpoint; janela de 14h36m | FLUXO-03 | [09:17] Diego, [09:17] Larissa |
-| RES-07 | DLQ | Tabela separada, para esgotamento ou erro determinístico (ERR-13, ERR-14) | FLUXO-04 | [09:18] Diego |
+| RES-07 | DLQ | Tabela separada, para esgotamento ou erro determinístico (ERR-13, ERR-14, ERR-16) | FLUXO-04 | [09:18] Diego |
 | RES-08 | Replay manual | Só `ADMIN`; mesmo `eventId`; contador de envios zerado | CT-07 | [09:18] Diego, [09:36] Sofia |
 | RES-09 | Idempotência no cliente | At-least-once; o cliente descarta repetições pelo `X-Event-Id` | CT-08 | [09:24] Diego, [09:25] Diego |
 | RES-10 | Recuperação de linhas presas | Na partida, `PROCESSING` volta a `PENDING` (proposta de implementação) | FLUXO-02, passo 2 | [09:12] Diego (instância única) |
@@ -799,8 +799,7 @@ WHERE `status` = 'PENDING' AND `nextAttemptAt` <= UTC_TIMESTAMP(3);
 | `webhook_worker_started` | info | Partida do worker | `pollIntervalMs`, `batchSize`, `recovered` |
 | `webhook_delivery_succeeded` | info | Resposta 2xx | `eventId`, `outboxId`, `webhookId`, `orderId`, `attempt`, `statusCode`, `durationMs` |
 | `webhook_retry_scheduled` | warn | Falha com envios restantes | os anteriores + `errorCode`, `nextAttemptAt` |
-| `webhook_moved_to_dead_letter` | error | Entrada na DLQ | os anteriores + `deadLetterId`, `reason` |
-| `webhook_delivery_skipped` | warn | Endpoint inativo ou removido | `eventId`, `outboxId`, `webhookId`, `errorCode` |
+| `webhook_moved_to_dead_letter` | error | Entrada na DLQ, inclusive por endpoint inativo ou removido | os anteriores + `deadLetterId`, `reason` |
 | `webhook_dead_letter_replayed` | info | CT-07 | `userId`, `requestId`, `deadLetterId`, `outboxId`, `eventId`, `webhookId` |
 | `webhook_secret_rotated` | info | CT-05 | `webhookId`, `userId`, `requestId`, `previousSecretExpiresAt` |
 | `webhook_endpoint_created`, `webhook_endpoint_updated`, `webhook_endpoint_deleted` | info | CT-01, CT-03, CT-04 | `webhookId`, `customerId`, `userId`, `requestId` (proposta de implementação, ver R-08) |
@@ -839,11 +838,11 @@ Caminhos conferidos no código atual; os novos estão na seção 4. Mudam só `s
 | INT-01 | `src/modules/orders/order.service.ts` | `changeStatus` (L126-179), com `$transaction` (L131), `orderStatusHistory.create` (L159-167) e releitura (L169-176). `type TxClient` (L24) é local, não exportado | Chamada a `publishWebhookEvent` entre L167 e L169, na mesma transação ([09:40] Bruno, [09:41] Bruno), com `tx` tipado como `Prisma.TransactionClient`. Construtor, `create` e `src/app.ts:42-44` não mudam ([09:41] Diego: "Não precisa injetar repository inteiro") | Sim, 2 linhas |
 | INT-02 | `src/modules/orders/order.status.ts` | `transitions` (L3-10, **não exportado**); `allowedTransitions` (L16-18), exportada | Deriva os status aceitos em `events` (seção 7), sem duplicar a máquina de estados | Não |
 | INT-03 | `prisma/schema.prisma` | `User` (L25-38), `Customer` (L40-54) e `Order` (L74-97), com `@@index` (L92-95) e `@@map` (L96) | Enum e 4 models da seção 5; `Customer` e `User` ganham só as relações inversas (DADOS-06) | Sim, aditivo |
-| INT-04 | `src/shared/errors/app-error.ts`, `src/shared/errors/http-errors.ts`, `src/shared/errors/index.ts` | `AppError` (`app-error.ts:3-16`); `BadRequestError` (`http-errors.ts:3-7`), `NotFoundError` com código fixo (L27-31), `ConflictError` (L33-37), `InvalidStatusTransitionError` (L45-53); barrel (`index.ts:1-13`) | Classes da seção 8, importadas do barrel ([09:28] Bruno). `WEBHOOK_NOT_FOUND` estende `AppError`, não `NotFoundError` | Não |
+| INT-04 | `src/shared/errors/app-error.ts`, `src/shared/errors/http-errors.ts`, `src/shared/errors/index.ts` | `AppError` (`app-error.ts:3-16`); `BadRequestError` (`http-errors.ts:3-7`), `NotFoundError` com código fixo (L27-31), `ConflictError` (L33-37), `InvalidStatusTransitionError` (L45-53); barrel (`index.ts:1-13`) | As classes novas da seção 8 importam as bases do barrel e ficam fora dele (proposta de implementação), no padrão de erros de [09:28] Bruno. `WEBHOOK_NOT_FOUND` estende `AppError`, não `NotFoundError` | Não |
 | INT-05 | `src/middlewares/auth.middleware.ts`, `src/modules/users/user.routes.ts` | `authenticate` (L27-47) e `requireRole` (L49-61), hoje usado só em `user.routes.ts:12-18` | `authenticate` em todas as rotas; `requireRole('ADMIN')` no router de admin ([09:36] Larissa) | Não |
 | INT-06 | `src/middlewares/error.middleware.ts`, `src/middlewares/validate.middleware.ts` | `errorMiddleware` (`error.middleware.ts:14-65`), com `AppError` em L15-24; `validate` (`validate.middleware.ts:11-37`) | Erros novos saem sem mudança ([09:29] Bruno); rotas com `validate({ params, query, body })` | Não |
 | INT-07 | `src/shared/logger/index.ts`, `src/middlewares/request-logger.middleware.ts` | `redactPaths` (`logger/index.ts:4-11`), `base.service` fixo (L20), `logger` (L32); `requestId` em `request-logger.middleware.ts:6-7` | Mesmo `logger`, com child no worker; `requestId` nos logs da API; `redactPaths` ampliado (OBS-11, proposta de implementação) | Só `redactPaths` (proposta) |
-| INT-08 | `src/config/database.ts`, `src/config/env.ts` | Singleton `prisma` (`database.ts:10`) e `createPrismaClient` (L4-8); `env` (`env.ts:27`), com `DATABASE_URL` e `JWT_SECRET` obrigatórios (L7-8) | O worker usa o `prisma` do seu processo, com a mesma `DATABASE_URL` ([09:30] Bruno); `createPrismaClient()` criaria um segundo client. Usa o mesmo `env`, então também exige `JWT_SECRET`. Nenhuma variável nova | Não |
+| INT-08 | `src/config/database.ts`, `src/config/env.ts` | Singleton `prisma` (`database.ts:10`) e `createPrismaClient` (L4-8); `env` (`env.ts:27`), com `DATABASE_URL` e `JWT_SECRET` obrigatórios (L7-8) | O worker usa o `prisma` do seu processo, com a mesma `DATABASE_URL` ([09:30] Bruno); `createPrismaClient()` criaria um segundo client. Usa o mesmo `env`, então também exige `JWT_SECRET`. Nenhuma variável nova, salvo a chave de cifra da secret, se a revisão de segurança decidir cifrá-la (PC-04 do RFC) | Não |
 | INT-09 | `src/server.ts` | `bootstrap` (L6-22), `shutdown` com `$disconnect` (L13-18), sinais (L20-21), `logger.fatal` na falha (L24-27) | Molde de `src/worker.ts` (novo, a criar) ([09:11] Larissa) | Não |
 | INT-10 | `src/app.ts`, `src/routes/index.ts` | `buildControllers` (`app.ts:26-53`), com `customerService` em L35; `Controllers` (`routes/index.ts:13-19`) e `buildApiRouter` (L21-31) | `buildControllers` cria `WebhookRepository(prisma)`, `WebhookService(repository, customerService, prisma)` (o `prisma` abre a transação do replay) e `WebhookController`, e devolve `webhooks`. `buildApiRouter` monta `/webhooks` com `buildWebhookRouter` e `/admin/webhooks` com `buildWebhookAdminRouter`; rotas e schemas na seção 7 | Sim |
 | INT-11 | `src/modules/orders/order.routes.ts`, `src/modules/orders/order.schemas.ts`, `src/modules/orders/order.controller.ts`, `src/modules/orders/order.repository.ts` | `buildOrderRouter` (`order.routes.ts:12-27`), schemas (`order.schemas.ts:4-30`), `OrderController` (`order.controller.ts:6-56`), `OrderRepository` (`order.repository.ts:18-19`) | Moldes do módulo ([09:27] Bruno); o contrato de `PATCH /orders/:id/status` (`order.routes.ts:19-23`) não muda | Não |
@@ -897,7 +896,7 @@ import { publishWebhookEvent } from '../webhooks/webhook.publisher.js'; // novo 
 3. Subir o worker com `npm run worker` em **uma única instância**: duas quebrariam a ordem por pedido ([09:12] Diego) e poderiam enviar a mesma linha duas vezes.
 4. Para reverter, parar o worker e voltar a API; os pendentes saem quando o worker voltar.
 
-**Configuração.** Nenhuma variável de ambiente nova: os valores são constantes do worker (FLUXO-02); torná-los configuráveis exigiria mexer em `src/config/env.ts` (proposta de implementação: fica para depois).
+**Configuração.** Nenhuma variável de ambiente nova: os valores são constantes do worker (FLUXO-02); torná-los configuráveis exigiria mexer em `src/config/env.ts` (proposta de implementação: fica para depois). A exceção depende do PC-04 do RFC: se a revisão de segurança decidir cifrar a secret, a chave de cifra entra como variável nova em `src/config/env.ts`.
 
 **Pessoas e processo**
 
@@ -923,7 +922,7 @@ Todos viram testes em `tests/webhooks.test.ts` (novo, a criar), com Vitest e Sup
 | CAT-08 | `fetch` falso sempre responde 503 | 5 ciclos, vencendo cada espera | Esperas gravadas de 1m, 5m, 30m, 2h e 12h; a linha segue `PENDING` | FLUXO-03, OT-04 |
 | CAT-09 | A mesma linha, com `attempts = 5` | 6º ciclo com falha | `FAILED`, `attempts = 6`; DLQ com `reason = WEBHOOK_MAX_ATTEMPTS_EXCEEDED`, `lastErrorCode = WEBHOOK_DELIVERY_HTTP_ERROR` e payload; `deadLetterId` na entrega e no log; nenhum 7º envio | FLUXO-04, ERR-15, OT-04 |
 | CAT-10 | Payload serializado de 65.537 bytes | `runCycle()` | Nenhum `fetch`; `FAILED`; DLQ com `WEBHOOK_PAYLOAD_TOO_LARGE`; sem retry | ERR-13, RES-14, OT-06 |
-| CAT-11 | Linha de endpoint inativo (e, à parte, removido) | `runCycle()` | Nenhum `fetch`; `FAILED` com `WEBHOOK_ENDPOINT_INACTIVE`; 1 entrega; nada na DLQ | ERR-16, FLUXO-06 |
+| CAT-11 | Linha de endpoint inativo (e, à parte, removido); à parte, replay de uma linha da DLQ com o endpoint ainda inativo | `runCycle()` | Nenhum `fetch`; `FAILED`; 1 entrega com `deadLetterId`; DLQ com `reason = WEBHOOK_ENDPOINT_INACTIVE`; sem retry. No replay, uma entrada nova na DLQ, reprocessável depois de reativar o endpoint | ERR-16, FLUXO-04, FLUXO-06 |
 | CAT-12 | Linha na DLQ | Replay como OPERATOR; como ADMIN; de novo; com id inexistente | 403 sem mudança; 202, outbox `PENDING` com `attempts = 0` e mesmo `eventId`, `replayedAt`/`replayedById` e log com `userId`; 409; 404 `WEBHOOK_DEAD_LETTER_NOT_FOUND` | CT-07, FLUXO-04 |
 | CAT-13 | Webhook com secret A | Rotação; envio na janela; envio depois dela | 200 com secret B e validade de 24h; `X-Signature` com B e A, ambas verificáveis; depois, só B | CT-05, FLUXO-05 |
 | CAT-14 | Webhook com 105 entregas | `GET .../deliveries`; id inexistente; webhook removido | 100 itens em `createdAt` decrescente, com `payload`; 404; 200 | CT-06 |

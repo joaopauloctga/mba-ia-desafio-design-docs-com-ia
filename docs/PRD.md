@@ -42,14 +42,14 @@ Os clientes B2B passam a ser avisados em menos de 10s ([09:02] Marcos) quando o 
 | ID | Objetivo | Métrica | Meta | Fonte |
 | --- | --- | --- | --- | --- |
 | MET-01 | Notificação "em tempo real" | Tempo da mudança de status até a chegada da notificação | **< 10s**, com até 2s de espera do polling *(interpretação, [ADR-002](./adrs/ADR-002-worker-em-processo-separado-com-polling.md))* | [09:02] Marcos, [09:10] Larissa |
-| MET-02 | Atender quem pediu | Clientes solicitantes integrados | **3 de 3** | [09:00] Marcos |
+| MET-02 | Atender quem pediu | Clientes solicitantes integrados | **3 de 3** *(proposta deste PRD)* | [09:00] Marcos |
 | MET-03 | Cumprir o prazo | Feature em produção | **Até o fim de novembro**, em 3 sprints | [09:45] Marcos, [09:47] Larissa |
 | MET-04 | Tolerar cliente fora do ar | Janela coberta pelas retentativas | **14h36m** *(interpretação, [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md))* | [09:17] Diego, [09:16] Diego |
 | MET-05 | Nenhuma mudança sem evento | Mudanças de status gravadas sem evento para os webhooks inscritos | **0**: "Não pode ter caso de status mudar e evento não sair" | [09:40] Bruno, [09:41] Diego |
 | MET-06 | Integração deixar de ser "lenta e cara" | Consultas periódicas dos clientes à listagem de pedidos | A medir; linha de base a coletar | [09:00] Marcos |
-| MET-07 | Decidir email e rate limiting com dados | Eventos que esgotam as tentativas; picos de notificações por cliente | A medir; linha de base a coletar | [09:37] Larissa, [09:39] Diego |
+| MET-07 | Decidir email (OOS-02) e rate limiting (OOS-03) com dados | Eventos que esgotam as tentativas; picos de notificações por cliente | A medir; linha de base a coletar | [09:37] Larissa, [09:39] Diego |
 
-MET-06 e MET-07 são propostas deste PRD, sem meta na reunião.
+MET-02, MET-06 e MET-07 são propostas deste PRD: a reunião não fixou a meta de MET-02, e as outras duas ficam sem meta.
 
 ## 5. Escopo (incluso e fora de escopo)
 
@@ -151,6 +151,7 @@ Probabilidade e impacto são avaliação deste PRD, não falas da reunião; quan
 | R-06 | Rajada de mudanças sobrecarrega o cliente | Média | Médio | Medir o volume (MET-07); rate limiting em observação (OOS-03) | [09:38] Diego |
 | R-07 | Eventos do mesmo pedido chegam fora de ordem | Baixa | Baixo | Instância única; os clientes "só querem saber se cada pedido deles mudou" | [09:13] Larissa, [09:14] Marcos |
 | R-08 | Qualquer usuário autenticado gerencia webhooks de qualquer cliente | Média | Médio | Aceito "Por enquanto"; restrição adiada (OOS-09) | [09:32] Bruno, [09:37] Sofia |
+| R-09 | Um endpoint lento atrasa a fila de notificações de todos os clientes, e a meta de 10s pode não valer enquanto isso | Média | Médio | Timeout de 10s por chamada, monitoramento do atraso e, se preciso, paralelizar o envio, o que depende da OQ-02 do [RFC](./RFC.md) | [09:42] Diego, [09:12] Diego |
 
 ## 11. Critérios de aceitação
 
@@ -159,7 +160,7 @@ Comportamento observável pelo cliente ou pelo administrador. A coluna **Cobre**
 | ID | Dado | Quando | Então | Cobre |
 | --- | --- | --- | --- | --- |
 | CA-01 | Usuário autenticado | Cadastra webhook com status de interesse | Com URL HTTPS, o webhook é criado e a resposta traz a secret gerada; com http, recusa com erro de validação | RF-02, RF-14, RNF-06 · CAT-04, CAT-05 |
-| CA-02 | Webhook inscrito em SHIPPED | Um pedido vira SHIPPED | A notificação chega em menos de 10s, com `X-Event-Id` e assinatura que confere com a secret | RF-01, RF-08, RF-15, RNF-01 · CAT-01, CAT-06, OBS-01 |
+| CA-02 | Webhook inscrito em SHIPPED, com os endpoints respondendo dentro do prazo (R-09) | Um pedido vira SHIPPED | A notificação chega em menos de 10s, com `X-Event-Id` e assinatura que confere com a secret | RF-01, RF-08, RF-15, RNF-01 · CAT-01, CAT-06, OBS-01 |
 | CA-03 | Webhook inscrito só em SHIPPED e DELIVERED | O pedido vira PAID | Nada é enviado a ele | RF-06 · CAT-03 |
 | CA-04 | Cliente em manutenção de 2h | Ele volta | Uma retentativa entrega o evento; se ficar fora toda a janela de 14h36m, o evento vai para a DLQ | RF-10, RF-11, RNF-14 · CAT-08, CAT-09 |
 | CA-05 | Evento na DLQ | Um usuário sem perfil ADMIN e depois um ADMIN pedem o reprocessamento | O primeiro é negado; o segundo reentrega com o mesmo `X-Event-Id` *(interpretação, [ADR-005](./adrs/ADR-005-entrega-at-least-once-com-x-event-id.md))* e registra quem pediu | RF-12, RNF-11 · CAT-12 |
@@ -174,6 +175,6 @@ Comportamento observável pelo cliente ou pelo administrador. A coluna **Cobre**
 - **Testes automatizados:** CA-01 a CA-09, pelos itens do FDD indicados na seção 11, dentro das 3 sprints, que incluem "testes ponta a ponta" ([09:46] Larissa).
 - **Revisão de segurança:** "HMAC e geração de secret", incluindo PC-02 e PC-04 do [RFC](./RFC.md), antes do deploy (DEP-02; [09:46] Sofia).
 - **Validação com os clientes:** Marcos confirma o prazo com a Atlas ([09:47] Marcos), atualiza os clientes ([09:49] Marcos) e documenta a integração no portal ([09:40] Marcos).
-- **Acompanhamento:** MET-01, MET-02 e MET-06 depois da entrega; MET-07 embasa a decisão sobre email e rate limiting ([09:37] Larissa, [09:39] Diego).
+- **Acompanhamento:** MET-01, MET-02 e MET-06 depois da entrega; MET-07 embasa a decisão sobre email e rate limiting (OOS-02, OOS-03; [09:37] Larissa, [09:39] Diego).
 
 A reunião não combinou piloto, beta nem liberação gradual, e este PRD não os propõe.

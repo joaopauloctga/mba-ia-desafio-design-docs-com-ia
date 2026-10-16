@@ -23,7 +23,7 @@ Aceito. Fechado em [09:22] Sofia ("Decidido: HMAC-SHA256 sobre o corpo do reques
 
 - Algoritmo HMAC-SHA256: "o padrão de mercado, todo cliente sério tem biblioteca pra isso" ([09:20] Sofia).
 - A assinatura vai no header `X-Signature` e o cliente a verifica do lado dele ([09:20] Sofia). A base do cálculo é o corpo do request ([09:22] Sofia).
-- O `X-Timestamp` (momento do envio) vai no request "pra cliente conseguir detectar replay attack se quiser" ([09:44] Diego), mas não entra no cálculo, porque a decisão fala só do corpo ([09:22] Sofia).
+- O `X-Timestamp` (momento do envio) vai no request "pra cliente conseguir detectar replay attack se quiser" ([09:44] Diego). Deixá-lo fora do cálculo é **interpretação** da decisão literal, que fala só do corpo ([09:22] Sofia): o header só surgiu depois da decisão, e a reunião não discutiu se ele entra na assinatura. A pergunta vai para a revisão de segurança ([09:46] Sofia) e para os revisores no [RFC](../RFC.md).
 - Secret única por endpoint: "Não é uma secret global da nossa plataforma" ([09:21] Sofia).
 - A secret é gerada pela plataforma e devolvida na criação ([09:31] Marcos) e, na rotação, a nova é devolvida ao cliente que a pediu pela API ([09:21] Sofia). Não mostrá-la em nenhuma outra resposta (listagem, consulta) é interpretação adotada depois da reunião, a partir de "devolvida na criação"; o contrato fica no [FDD](../FDD.md).
 - Rotação via API: "Quando ele rotaciona, a antiga fica válida por 24 horas em paralelo, pra ele ter tempo de migrar os sistemas dele. Depois disso, a antiga morre" ([09:21] Sofia).
@@ -58,7 +58,7 @@ Aceito. Fechado em [09:22] Sofia ("Decidido: HMAC-SHA256 sobre o corpo do reques
 - **Descrição:** incluir o `X-Timestamp` na base do HMAC, para que a assinatura também proteja contra reenvio.
 - **Prós:** o cliente poderia rejeitar requisições antigas com garantia criptográfica.
 - **Contras:** muda a base do cálculo que foi decidida e que o cliente vai implementar.
-- **Motivo do descarte:** a decisão é "HMAC-SHA256 sobre o corpo do request" ([09:22] Sofia), e o `X-Timestamp` foi definido como apoio opcional do cliente ("se quiser", [09:44] Diego).
+- **Motivo do descarte:** interpretação posterior à reunião, que não discutiu a alternativa. A decisão literal é "HMAC-SHA256 sobre o corpo do request" ([09:22] Sofia), tomada antes de o `X-Timestamp` aparecer como apoio opcional do cliente ("se quiser", [09:44] Diego). Sem assinatura, o header pode ser reescrito por quem capturar a requisição; por isso a pergunta segue para a revisão de segurança ([09:46] Sofia).
 
 ## Consequências
 
@@ -75,7 +75,7 @@ Aceito. Fechado em [09:22] Sofia ("Decidido: HMAC-SHA256 sobre o corpo do reques
 - Durante as 24h de rotação, o worker calcula duas assinaturas e o cliente precisa aceitar qualquer uma delas. A forma ainda depende da revisão de segurança.
 - A secret só é mostrada na criação e na rotação. Se o cliente a perder, o único caminho é rotacionar.
 - A lista de redact do logger (`src/shared/logger/index.ts:4-11`) não cobre secret hoje. Incluí-la é proposta de implementação a validar na revisão de segurança, não decisão da reunião.
-- A assinatura não impede o reenvio de uma requisição capturada: o `X-Timestamp` ajuda o cliente a detectar replay "se quiser" ([09:44] Diego), mas não é assinado.
+- A assinatura não impede o reenvio de uma requisição capturada: o `X-Timestamp` ajuda o cliente a detectar replay "se quiser" ([09:44] Diego), mas não é assinado e pode ser reescrito. Mantê-lo fora do HMAC é interpretação, a confirmar na revisão de segurança.
 - A revisão de segurança de pelo menos dois dias úteis antes do deploy entra no prazo da entrega ([09:46] Sofia, [09:47] Larissa).
 
 ### Trade-off explícito

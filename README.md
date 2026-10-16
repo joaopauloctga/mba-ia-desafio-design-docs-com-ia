@@ -16,7 +16,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | --- | --- |
 | **Claude Code** (Claude Opus 5.5), sessão principal | Orquestrador e revisor. Leu a transcrição e o código, montou o plano de execução em fases, preparou as instruções de cada fase e conferiu diretamente no repositório (git, arquivos, comandos) se o que foi executado batia com o plano |
 | **Claude Code**, subagente Opus | Executor das fases. Recebe as instruções da fase, executa os passos e devolve um relatório que o orquestrador confere antes de seguir |
-| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos; no RFC, tamanho e vazamento de detalhe de FDD; no FDD, se cada exemplo JSON é válido, se as rotas e os códigos `WEBHOOK_*` são só os previstos e se o símbolo citado está mesmo na linha de código indicada. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
+| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos; no RFC, tamanho e vazamento de detalhe de FDD; no FDD, se cada exemplo JSON é válido, se as rotas e os códigos `WEBHOOK_*` são só os previstos e se o símbolo citado está mesmo na linha de código indicada; no PRD, se escapou nome de tabela, código de erro, status HTTP ou caminho de arquivo, se algum item fora de escopo virou requisito e se cada meta usa só números ditos na reunião. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
 
 ## Workflow adotado
 
@@ -48,7 +48,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | 2. ADRs | ✅ |
 | 3. RFC | ✅ |
 | 4. FDD | ✅ |
-| 5. PRD | ⏳ |
+| 5. PRD | ✅ |
 | 6. Tracker | ⏳ |
 | 7. Consolidação deste README | ⏳ |
 | 8. Revisão final e entrega | ⏳ |
@@ -178,7 +178,31 @@ Regras:
 Grave o esqueleto primeiro e preencha uma seção por vez.
 ```
 
-<!-- Próximos: prompts de geração do PRD e tracker (fases 5-6). -->
+### 7. PRD na altura de produto
+
+Usado para gerar o PRD, uma seção por vez. Impede que detalhe de implementação (tabela, código de erro, status HTTP) suba para o documento de produto, que a IA invente metas como "99,9% de entrega" e que algo descartado, adiado ou deixado em observação na reunião volte como requisito.
+
+```text
+Escreva docs/PRD.md em PT-BR consolidando a visão de PRODUTO. ADRs, RFC e FDD já existem: use-os como
+fonte, mas suba a altura. Proibido no PRD: nome de tabela, coluna, classe, código de erro, JSON,
+status code HTTP. Decisão técnica entra como uma linha com link para o ADR.
+
+Obrigatório:
+- As 12 seções do enunciado, nesta ordem.
+- ≥ 8 requisitos funcionais, cada um com a fala de origem [hh:mm] Nome; requisito derivado marcado como tal.
+- Objetivos com meta numérica usando SOMENTE números ditos na reunião (<10s, 3 clientes, fim de novembro,
+  janela de retry de 14h36m). Não invente percentuais de SLA.
+- Fora de escopo: liste o que foi DESCARTADO, ADIADO ou fica EM OBSERVAÇÃO (email, rate limiting,
+  dashboard, inbound, arquivamento, exactly-once, multi-worker...), com a situação de cada um.
+  Nenhum item fora de escopo pode reaparecer como requisito.
+- Riscos em tabela com Probabilidade, Impacto e Mitigação.
+- Decisões: uma linha por ADR com link, sem repetir o conteúdo.
+- Conciso: tabelas diretas, sem repetir em prosa o que já está na tabela.
+Grave o esqueleto primeiro e preencha uma seção por vez. Antes de entregar, liste qualquer frase sua
+que NÃO tenha origem na transcrição ou no código.
+```
+
+<!-- Próximos: prompt do tracker (fase 6). -->
 
 ## Iterações e ajustes
 
@@ -198,12 +222,14 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 10 | Fase 4 / FDD (coerência interna) | O FDD gerado seção a seção, com modelo de dados, fluxos, 8 contratos, matriz de erros e 18 pontos de integração | Partes do texto se contradiziam ou não tinham origem. O arquivo do worker "criava o Prisma client", enquanto o fluxo do worker usava a instância que o processo já tem. A seção de integração dizia "só quatro arquivos mudam" e listava sete. Três itens da resiliência e da matriz de erros estavam sem nenhuma fonte, e um trecho entre aspas ("arquivos do código base") não era fala de ninguém. O próprio validador, também gerado pela IA, acusava falsos positivos, como ler `@prisma/client` como o caminho `prisma/client` | Corrigi o texto, acrescentei a fala ou a linha de código que sustenta cada item e ajustei o script. Testei o validador por mutação (13 erros injetados, 13 acusados) e conferi à parte que a assinatura HMAC do exemplo de entrega é o valor real calculado sobre aquele corpo com aquela secret |
 | 11 | Fase 4 / FDD (fidelidade) | Contratos, fluxos e riscos já sem falhas no validador | A releitura cética achou frases que iam além da reunião. "O `customerId` vem no body ([09:32] Larissa)", quando a Larissa disse "no body ou no path" e o body foi escolha do FDD. Um argumento do Diego sobre vários workers aplicado ao paralelismo dentro de um worker. A rota de rotação atribuída ao Bruno, quando o endpoint é da Sofia. "Um customer tem poucos endpoints" como fato. E três propostas sem a marca (paginação da listagem, replay único por linha da DLQ e mudança no redact do log) | Troquei pela fala literal e marquei a escolha como proposta de implementação. Também reescrevi a extrapolação, corrigi a atribuição, transformei a suposição em premissa explícita, com alternativa, e acrescentei as marcas que faltavam. A leitura cruzada com os 7 ADRs e o RFC não achou contradição |
 | 12 | Fase 4 / FDD (tamanho) | O FDD já validado e commitado: 1.523 linhas e 14.341 palavras, 707 delas em blocos de código. Eram 274 linhas de TypeScript, com o corpo inteiro do publisher e do ciclo do worker, os schemas Zod, as classes de erro e a composição de rotas, e 173 de JSON, com o mesmo JSON de erro repetido em cada contrato e um histórico de entregas com dois itens completos | Ao ler o documento, achei que tinha "muito exemplo de código". Ele parecia código pronto em vez de especificação, e a prosa repetia o que as tabelas logo abaixo e os ADRs já diziam | Enxuguei uma seção por vez. O TypeScript ficou com 27 linhas: a assinatura de `publishWebhookEvent`, as constantes do worker, a função `sign` e o diff do `changeStatus`. Os schemas Zod viraram tabela, as classes de erro ficaram só na matriz, e a composição de rotas, os scripts e a limpeza dos testes foram para a tabela de integração. Os contratos ganharam um único exemplo de erro no início, o CT-06 ficou com um item e sobrou uma consulta SQL. Resultado: 951 linhas e 10.221 palavras no `wc -w` (8.536 sem os símbolos das tabelas), com 270 linhas de código. IDs, citações, números e a assinatura HMAC do exemplo foram preservados. A checagem do validador que exigia um JSON de erro por contrato passou a exigir o exemplo comum e uma linha 4xx em cada tabela, e o teste por mutação acusou os 10 erros injetados |
+| 13 | Fase 5 / PRD (tamanho) | O primeiro rascunho completo do PRD, gerado seção a seção | 3.433 palavras no `wc -w`, 23% acima da referência de cerca de 2.800 que defini para não repetir o problema do FDD. Havia colunas de pouco valor nas tabelas, um "Incluso" que repetia em lista a tabela de requisitos e uma tabela de testes de quatro colunas | Cortei em quatro rodadas sem tirar nenhum ID nem fonte. A categoria dos requisitos não funcionais virou prefixo, as colunas redundantes saíram, a persona do PM foi para as dependências e o cenário de investigação saiu, porque o requisito e o critério já o cobrem. O critério de URL http foi fundido ao de cadastro, e a seção de testes virou lista. Fechou em 2.836 palavras (2.266 sem os símbolos de Markdown das tabelas) |
+| 14 | Fase 5 / PRD (fidelidade) | Requisitos, critérios de aceitação e estratégia de testes já sem falhas no validador | Três trechos entre aspas não eram literais, e um deles atribuía à Sofia uma expressão que era da pergunta do Marcos. O requisito de consistência dizia que toda mudança de status gera evento, mas o filtro por status só registra o evento quando há webhook inscrito. A estratégia de testes inventava responsáveis ("Marcos e time") e ampliava a fala da Larissa: "este pacote de documentos" no lugar do "doc de design da feature". O mapeamento dos critérios de aceitação para os testes do FDD apontava itens que não testam aquilo, como o critério de "menos de 10s" ligado a testes que não medem latência. Os próprios cortes de tamanho deixaram o "Incluso" sem conteúdo e um critério com a frase truncada | Conferi cada trecho entre aspas na transcrição logo depois de gravar a seção. Também reli as 63 falas citadas no contexto e cada item do FDD apontado. Troquei pelas falas literais, acrescentei "para os webhooks inscritos", tirei a atribuição inventada, corrigi o mapeamento (com a métrica de latência do FDD) e reescrevi o "Incluso" numa frase. Um validador novo para o PRD (altura, números das metas, fora de escopo longe dos requisitos) passou no teste por mutação: 22 erros injetados, 22 acusados |
 
 ## Como navegar a entrega
 
 | Ordem | Arquivo | Pergunta que responde | Status |
 | --- | --- | --- | --- |
-| 1 | [`docs/PRD.md`](./docs/PRD.md) | Por que e o quê? | ⏳ |
+| 1 | [`docs/PRD.md`](./docs/PRD.md) | Por que e o quê? | ✅ |
 | 2 | [`docs/RFC.md`](./docs/RFC.md) | Como pretendemos resolver e o que ainda está em aberto? | ✅ |
 | 3 | [`docs/adrs/`](./docs/adrs/README.md) | Por que decidimos exatamente assim? | ✅ |
 | 4 | [`docs/FDD.md`](./docs/FDD.md) | Como construir, em detalhe? | ✅ |

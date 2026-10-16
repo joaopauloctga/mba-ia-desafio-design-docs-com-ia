@@ -16,7 +16,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | --- | --- |
 | **Claude Code** (Claude Opus 5.5), sessão principal | Orquestrador e revisor. Leu a transcrição e o código, montou o plano de execução em fases, preparou as instruções de cada fase e conferiu diretamente no repositório (git, arquivos, comandos) se o que foi executado batia com o plano |
 | **Claude Code**, subagente Opus | Executor das fases. Recebe as instruções da fase, executa os passos e devolve um relatório que o orquestrador confere antes de seguir |
-| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos; no RFC, tamanho e vazamento de detalhe de FDD; no FDD, se cada exemplo JSON é válido, se as rotas e os códigos `WEBHOOK_*` são só os previstos e se o símbolo citado está mesmo na linha de código indicada; no PRD, se escapou nome de tabela, código de erro, status HTTP ou caminho de arquivo, se algum item fora de escopo virou requisito e se cada meta usa só números ditos na reunião. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
+| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos; no RFC, tamanho e vazamento de detalhe de FDD; no FDD, se cada exemplo JSON é válido, se as rotas e os códigos `WEBHOOK_*` são só os previstos e se o símbolo citado está mesmo na linha de código indicada; no PRD, se escapou nome de tabela, código de erro, status HTTP ou caminho de arquivo, se algum item fora de escopo virou requisito e se cada meta usa só números ditos na reunião; no tracker, se cada `[hh:mm] Nome` aponta para uma fala que existe, se cada caminho `CODIGO` existe e não é arquivo que a feature ainda vai criar, se todo rótulo dos quatro documentos tem linha e se as metas do enunciado (70% de `TRANSCRICAO`, 5 linhas `CODIGO`, 80% de cobertura) são atingidas. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
 
 ## Workflow adotado
 
@@ -38,6 +38,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 4. **Sem templates do curso.** Os documentos seguem as seções mínimas exigidas no enunciado para PRD, RFC e FDD, e o formato MADR para os ADRs.
 5. **Processo documentado durante o trabalho.** Este README é atualizado ao final de cada fase, para que prompts e iterações sejam registrados quando acontecem, e não reconstruídos de memória no fim.
 6. **Catálogo como base de verdade.** Antes de escrever qualquer documento, a transcrição foi catalogada linha a linha, com um ID por item e a origem `[hh:mm] Nome`, e um script confere se todas as falas estão cobertas e se cada citação existe. Os documentos só usam o que está no catálogo ou no código. O que a reunião deixou ambíguo vira checkpoint de decisão minha, com opções e recomendação, antes de entrar em qualquer documento.
+7. **Script para existência, amostra para sentido.** No tracker, o validador garante que cada fala e cada arquivo existem e que nenhum item ficou sem linha, mas não diz se a fala sustenta o item. Para isso, sorteio linhas com semente registrada e confiro cada uma na transcrição ou no código. Quando a amostra acha um problema, varro a classe inteira de linhas parecidas, e não só as sorteadas.
 
 **Andamento**
 
@@ -49,7 +50,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | 3. RFC | ✅ |
 | 4. FDD | ✅ |
 | 5. PRD | ✅ |
-| 6. Tracker | ⏳ |
+| 6. Tracker | ✅ |
 | 7. Consolidação deste README | ⏳ |
 | 8. Revisão final e entrega | ⏳ |
 
@@ -202,7 +203,24 @@ Grave o esqueleto primeiro e preencha uma seção por vez. Antes de entregar, li
 que NÃO tenha origem na transcrição ou no código.
 ```
 
-<!-- Próximos: prompt do tracker (fase 6). -->
+### 8. Tracker com uma origem por linha
+
+Usado para montar o tracker, um documento por vez. Impede que a IA estime horários ou aponte uma fala que não sustenta o item, cite como `CODIGO` um arquivo que a feature ainda vai criar, junte duas origens numa célula ou invente uma origem para o que não tem.
+
+```text
+Monte docs/TRACKER.md a partir do rascunho incremental e varrendo docs/PRD.md, docs/RFC.md, docs/FDD.md
+e docs/adrs/*.md. Para CADA rótulo (RF, RNF, OOS, MET, CA, ALT, OQ, PC, CT, ERR, INT, CAT...) e cada ADR,
+garanta uma linha no formato | ID | Documento | Tipo | Conteúdo (resumo) | Fonte | Localização |.
+- Localização TRANSCRICAO: exatamente "[hh:mm] Nome" de uma fala que EXISTE e que SUSTENTA o item.
+  Abra a transcrição e confira; não estime o horário.
+- Localização CODIGO: somente caminhos que existem. Arquivos a criar (src/worker.ts,
+  src/modules/webhooks/*) NUNCA são fonte CODIGO.
+- Uma origem por linha. Proposta de implementação é ancorada na fala ou no arquivo que a motiva e
+  marcada como proposta no Conteúdo.
+- Se não encontrar origem para um item, NÃO invente: liste-o à parte em "Itens sem origem" para
+  revisarmos (provável remoção do documento).
+Grave um documento por vez. No fim, rode o validador e sorteie 25 linhas para conferir a semântica.
+```
 
 ## Iterações e ajustes
 
@@ -224,6 +242,8 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 12 | Fase 4 / FDD (tamanho) | O FDD já validado e commitado: 1.523 linhas e 14.341 palavras, 707 delas em blocos de código. Eram 274 linhas de TypeScript, com o corpo inteiro do publisher e do ciclo do worker, os schemas Zod, as classes de erro e a composição de rotas, e 173 de JSON, com o mesmo JSON de erro repetido em cada contrato e um histórico de entregas com dois itens completos | Ao ler o documento, achei que tinha "muito exemplo de código". Ele parecia código pronto em vez de especificação, e a prosa repetia o que as tabelas logo abaixo e os ADRs já diziam | Enxuguei uma seção por vez. O TypeScript ficou com 27 linhas: a assinatura de `publishWebhookEvent`, as constantes do worker, a função `sign` e o diff do `changeStatus`. Os schemas Zod viraram tabela, as classes de erro ficaram só na matriz, e a composição de rotas, os scripts e a limpeza dos testes foram para a tabela de integração. Os contratos ganharam um único exemplo de erro no início, o CT-06 ficou com um item e sobrou uma consulta SQL. Resultado: 951 linhas e 10.221 palavras no `wc -w` (8.536 sem os símbolos das tabelas), com 270 linhas de código. IDs, citações, números e a assinatura HMAC do exemplo foram preservados. A checagem do validador que exigia um JSON de erro por contrato passou a exigir o exemplo comum e uma linha 4xx em cada tabela, e o teste por mutação acusou os 10 erros injetados |
 | 13 | Fase 5 / PRD (tamanho) | O primeiro rascunho completo do PRD, gerado seção a seção | 3.433 palavras no `wc -w`, 23% acima da referência de cerca de 2.800 que defini para não repetir o problema do FDD. Havia colunas de pouco valor nas tabelas, um "Incluso" que repetia em lista a tabela de requisitos e uma tabela de testes de quatro colunas | Cortei em quatro rodadas sem tirar nenhum ID nem fonte. A categoria dos requisitos não funcionais virou prefixo, as colunas redundantes saíram, a persona do PM foi para as dependências e o cenário de investigação saiu, porque o requisito e o critério já o cobrem. O critério de URL http foi fundido ao de cadastro, e a seção de testes virou lista. Fechou em 2.836 palavras (2.266 sem os símbolos de Markdown das tabelas) |
 | 14 | Fase 5 / PRD (fidelidade) | Requisitos, critérios de aceitação e estratégia de testes já sem falhas no validador | Três trechos entre aspas não eram literais, e um deles atribuía à Sofia uma expressão que era da pergunta do Marcos. O requisito de consistência dizia que toda mudança de status gera evento, mas o filtro por status só registra o evento quando há webhook inscrito. A estratégia de testes inventava responsáveis ("Marcos e time") e ampliava a fala da Larissa: "este pacote de documentos" no lugar do "doc de design da feature". O mapeamento dos critérios de aceitação para os testes do FDD apontava itens que não testam aquilo, como o critério de "menos de 10s" ligado a testes que não medem latência. Os próprios cortes de tamanho deixaram o "Incluso" sem conteúdo e um critério com a frase truncada | Conferi cada trecho entre aspas na transcrição logo depois de gravar a seção. Também reli as 63 falas citadas no contexto e cada item do FDD apontado. Troquei pelas falas literais, acrescentei "para os webhooks inscritos", tirei a atribuição inventada, corrigi o mapeamento (com a métrica de latência do FDD) e reescrevi o "Incluso" numa frase. Um validador novo para o PRD (altura, números das metas, fora de escopo longe dos requisitos) passou no teste por mutação: 22 erros injetados, 22 acusados |
+| 15 | Fase 6 / tracker (consolidação do rascunho) | As linhas do rascunho, alimentado desde a fase 2 com uma origem por linha | Em várias linhas, o resumo juntava partes de falas diferentes, e a única origem apontada não sustentava tudo. No pior caso, o requisito de cadastro dizia que o cliente vem na requisição, e não do login, e apontava para [09:31] Marcos, que disse o contrário ("Customer_id implícito do JWT"); quem corrigiu foi [09:32] Larissa. O mesmo padrão aparecia no reprocessamento só por ADMIN, no `X-Webhook-Id`, na recusa de URL http e nos headers de saída. O tipo também variava ("Objetivo Técnico", "Critério de Aceitação", "Métrica (proposta, sem meta)"). O validador novo, também gerado pela IA, acusava como arquivo novo o `tests/orders.test.ts`, que o FDD cita só como molde | Separei cada origem numa linha com sufixo (`PRD-FR-02b` aponta para [09:32] Larissa) e fixei um vocabulário de 23 tipos, com legenda no topo do tracker. No script, a lista de arquivos novos passou a ter só os caminhos marcados "(novo". O teste por mutação acusou 32 de 32 erros injetados, cada um pela regra certa: fala inexistente, caminho falso, `src/worker.ts` como `CODIGO`, ID duplicado, cabeçalho alterado, rótulo sem linha, `A-xx` no texto, entre outros |
+| 16 | Fase 6 / tracker (amostragem semântica) | O tracker já sem falhas no validador: 287 linhas, 86% `TRANSCRICAO` e 100% dos itens cobertos | O script confere se a fala existe, não se ela sustenta o item. Numa amostra de 30 linhas (semente 20261016), 2 decisões apontavam para [09:10] Larissa, que só diz "Worker em polling, 2s", sem falar de processo separado nem de instância única. Uma segunda amostra, de 25 linhas (semente 16102026), achou mais 2 do mesmo tipo: o contrato de cadastro com o `customerId` no body, ancorado na fala do Marcos que falava em JWT, e a verificação da assinatura atribuída ao Diego | Varri a classe inteira, e não só as linhas sorteadas. As decisões que juntam vários elementos passaram a apontar para o resumo de [09:48] Larissa, que todos confirmaram, ou ganharam linha com sufixo; o ADR-003 e o ADR-007 ficaram só com o que a fala de fechamento diz. Uma varredura por conceito (10s, 24h, ADMIN, assinatura, JWT etc.) nas linhas `TRANSCRICAO` sinalizou 38. Corrigi 13 delas: os blocos de proposta do RFC, o UUID atribuído à Larissa, o https posto na conta de falas que não falam dele (num objetivo do FDD e num critério do PRD) e 7 linhas em que o 64KB indo direto para a DLQ ou a janela de 14h36m estavam sem a marca *(interpretação)*. As outras 25 já traziam a marca ou tinham o núcleo sustentado pela fala. Conferi também as 40 linhas `CODIGO` contra as linhas de código citadas. Resultado: 299 linhas, 86,6% `TRANSCRICAO`, 40 `CODIGO` e 262 de 262 itens cobertos. Nenhum item ficou sem origem, e nenhum documento precisou de correção de âncora |
 
 ## Como navegar a entrega
 
@@ -233,4 +253,4 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 2 | [`docs/RFC.md`](./docs/RFC.md) | Como pretendemos resolver e o que ainda está em aberto? | ✅ |
 | 3 | [`docs/adrs/`](./docs/adrs/README.md) | Por que decidimos exatamente assim? | ✅ |
 | 4 | [`docs/FDD.md`](./docs/FDD.md) | Como construir, em detalhe? | ✅ |
-| 5 | [`docs/TRACKER.md`](./docs/TRACKER.md) | De onde veio cada coisa? | ⏳ |
+| 5 | [`docs/TRACKER.md`](./docs/TRACKER.md) | De onde veio cada coisa? | ✅ |

@@ -16,7 +16,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | --- | --- |
 | **Claude Code** (Claude Opus 5.5), sessão principal | Orquestrador e revisor. Leu a transcrição e o código, montou o plano de execução em fases, preparou as instruções de cada fase e conferiu diretamente no repositório (git, arquivos, comandos) se o que foi executado batia com o plano |
 | **Claude Code**, subagente Opus | Executor das fases. Recebe as instruções da fase, executa os passos e devolve um relatório que o orquestrador confere antes de seguir |
-| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos e, no RFC, tamanho e vazamento de detalhe de FDD. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
+| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos; no RFC, tamanho e vazamento de detalhe de FDD; no FDD, se cada exemplo JSON é válido, se as rotas e os códigos `WEBHOOK_*` são só os previstos e se o símbolo citado está mesmo na linha de código indicada. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
 
 ## Workflow adotado
 
@@ -47,7 +47,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | 1. Extração e catálogo da transcrição | ✅ |
 | 2. ADRs | ✅ |
 | 3. RFC | ✅ |
-| 4. FDD | ⏳ |
+| 4. FDD | ✅ |
 | 5. PRD | ⏳ |
 | 6. Tracker | ⏳ |
 | 7. Consolidação deste README | ⏳ |
@@ -151,7 +151,34 @@ Restrições:
 Depois de gerar, conte as palavras e reporte.
 ```
 
-<!-- Próximos: prompts de geração do FDD, PRD e tracker (fases 4-6). -->
+### 6. FDD acionável, ancorado no código
+
+Usado para gerar o FDD, uma seção por vez. Impede que a IA invente caminhos ou trate como importável um símbolo que não é exportado (`TxClient`, `transitions`), use `NotFoundError` para um código `WEBHOOK_*`, traga biblioteca nova ou apresente como decidido o que é proposta minha.
+
+```text
+Escreva docs/FDD.md em PT-BR. É o documento de IMPLEMENTAÇÃO: um dev deve conseguir codar a partir dele.
+Base obrigatória: docs/adrs/*, docs/RFC.md, o mapa do código e as decisões de interpretação aprovadas.
+NÃO contradiga nenhum ADR nem o RFC.
+
+Regras:
+1. Seção "Integração com o sistema existente": cite SOMENTE caminhos que existem (confira com ls/grep antes),
+   com linha e o símbolo exato (ex.: changeStatus L126-179, requireRole L49-61). Arquivos novos vão numa
+   seção separada, marcados "(novo, a criar)". Símbolo não exportado não é "reaproveitado" por import.
+2. Contratos: para cada endpoint, request (headers + JSON), response de sucesso (JSON), um response de erro
+   no formato real do errorMiddleware, status codes e semântica. API de configuração em camelCase;
+   payload de saída para o cliente em snake_case.
+3. Matriz de erros: todos os códigos novos com prefixo WEBHOOK_, indicando a classe base existente que cada
+   um estende. Lembre que NotFoundError tem código fixo NOT_FOUND.
+4. Tudo que NÃO foi decidido na reunião e você precisar propor deve vir marcado "(proposta de implementação)".
+5. Não adicione bibliotecas novas. Não use Redis/filas/OpenTelemetry/Prometheus como solução.
+6. Observabilidade: subseções explícitas "Métricas", "Logs" e "Tracing".
+7. Números exatos: 2s, 10s, 1m/5m/30m/2h/12h, 14h36m, 64KB, 24h, 100.
+8. Cada item rastreável leva seu ID visível (FLUXO-NN, CT-NN, ERR-NN, RES-NN, OBS-NN, INT-NN, DADOS-NN,
+   CAT-NN, R-NN) e cada afirmação aponta para [hh:mm] Nome ou para um caminho real do código.
+Grave o esqueleto primeiro e preencha uma seção por vez.
+```
+
+<!-- Próximos: prompts de geração do PRD e tracker (fases 5-6). -->
 
 ## Iterações e ajustes
 
@@ -168,6 +195,8 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 7 | Fase 3 / RFC (tamanho) | Primeiro rascunho completo do RFC | 2.830 palavras sem a tabela de metadados, 66% acima do teto de 1.700 que o próprio prompt fixava. Só a proposta tinha 741 palavras, as tabelas tinham colunas redundantes e quase toda frase levava citação duplicada | Medi com um script novo e cortei em três rodadas. Tirei a coluna "Por que foi considerada" (a motivação ficou só onde há fala de origem), a ALT-04, que era opcional e continua no ADR-002, os riscos que repetiam impactos ou questões em aberto e os detalhes de implementação que tinham escapado. Fechou em 1.698 na contagem estilo `wc -w` (1.516 sem os símbolos de Markdown das tabelas) |
 | 8 | Fase 3 / RFC (fidelidade) | Proposta, questões em aberto e impactos | Frases mais fortes que a fala. Um "POST" que ninguém disse. O "overengineering" do Diego, dito sobre Redis Cluster, virou argumento contra qualquer infraestrutura. "A ordem vale por pedido" aparecia sem a ressalva do retry, e a introdução dos pontos para confirmação dizia que todos estavam nos ADRs. O impacto na transação omitia a leitura que o ADR-007 registra. Os próprios cortes de tamanho também apagaram qualificadores: "Talvez próxima fase" virou "Próxima fase", e o "por enquanto" da Sofia sumiu da autorização do CRUD | Reli cada frase contra a transcrição e cruzei com os 7 ADRs. Troquei pelas falas literais, restaurei os qualificadores e passei a reler o texto depois de cada rodada de corte, não só no fim |
 | 9 | Fase 3 / RFC vs. ADR-001 | Contexto do RFC dizendo que o Bruno chamou a transação de "já pesada" | A fala é "já é pesada". A citação não literal veio do ADR-001 (L14) e tinha passado pela revisão da fase 2 | O validador do RFC passou a conferir se cada trecho entre aspas existe literalmente na transcrição. Corrigi no RFC. O agente da fase não podia alterar ADRs, então só apontou o problema; corrigi o ADR-001 na conferência da fase |
+| 10 | Fase 4 / FDD (coerência interna) | O FDD gerado seção a seção, com modelo de dados, fluxos, 8 contratos, matriz de erros e 18 pontos de integração | Partes do texto se contradiziam ou não tinham origem. O arquivo do worker "criava o Prisma client", enquanto o fluxo do worker usava a instância que o processo já tem. A seção de integração dizia "só quatro arquivos mudam" e listava sete. Três itens da resiliência e da matriz de erros estavam sem nenhuma fonte, e um trecho entre aspas ("arquivos do código base") não era fala de ninguém. O próprio validador, também gerado pela IA, acusava falsos positivos, como ler `@prisma/client` como o caminho `prisma/client` | Corrigi o texto, acrescentei a fala ou a linha de código que sustenta cada item e ajustei o script. Testei o validador por mutação (13 erros injetados, 13 acusados) e conferi à parte que a assinatura HMAC do exemplo de entrega é o valor real calculado sobre aquele corpo com aquela secret |
+| 11 | Fase 4 / FDD (fidelidade) | Contratos, fluxos e riscos já sem falhas no validador | A releitura cética achou frases que iam além da reunião. "O `customerId` vem no body ([09:32] Larissa)", quando a Larissa disse "no body ou no path" e o body foi escolha do FDD. Um argumento do Diego sobre vários workers aplicado ao paralelismo dentro de um worker. A rota de rotação atribuída ao Bruno, quando o endpoint é da Sofia. "Um customer tem poucos endpoints" como fato. E três propostas sem a marca (paginação da listagem, replay único por linha da DLQ e mudança no redact do log) | Troquei pela fala literal e marquei a escolha como proposta de implementação. Também reescrevi a extrapolação, corrigi a atribuição, transformei a suposição em premissa explícita, com alternativa, e acrescentei as marcas que faltavam. A leitura cruzada com os 7 ADRs e o RFC não achou contradição |
 
 ## Como navegar a entrega
 
@@ -176,5 +205,5 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 1 | [`docs/PRD.md`](./docs/PRD.md) | Por que e o quê? | ⏳ |
 | 2 | [`docs/RFC.md`](./docs/RFC.md) | Como pretendemos resolver e o que ainda está em aberto? | ✅ |
 | 3 | [`docs/adrs/`](./docs/adrs/README.md) | Por que decidimos exatamente assim? | ✅ |
-| 4 | [`docs/FDD.md`](./docs/FDD.md) | Como construir, em detalhe? | ⏳ |
+| 4 | [`docs/FDD.md`](./docs/FDD.md) | Como construir, em detalhe? | ✅ |
 | 5 | [`docs/TRACKER.md`](./docs/TRACKER.md) | De onde veio cada coisa? | ⏳ |

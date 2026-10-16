@@ -16,6 +16,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | --- | --- |
 | **Claude Code** (Claude Opus 5.5), sessão principal | Orquestrador e revisor. Leu a transcrição e o código, montou o plano de execução em fases, preparou as instruções de cada fase e conferiu diretamente no repositório (git, arquivos, comandos) se o que foi executado batia com o plano |
 | **Claude Code**, subagente Opus | Executor das fases. Recebe as instruções da fase, executa os passos e devolve um relatório que o orquestrador confere antes de seguir |
+| **Scripts de validação** (Python, só biblioteca padrão, gerados pelo subagente) | Conferem cada documento contra a transcrição e o código: citações `[hh:mm] Nome`, trechos entre aspas, caminhos de arquivo, links, IDs, números canônicos e, no RFC, tamanho e vazamento de detalhe de FDD. Ficam na pasta local do plano e são testados por mutação (erros injetados numa cópia) |
 
 ## Workflow adotado
 
@@ -45,7 +46,7 @@ O difícil não é gerar texto. É garantir que cada requisito, decisão e restr
 | 0. Setup (branch `docs/design-docs-webhooks`, ambiente, registro do processo) | ✅ |
 | 1. Extração e catálogo da transcrição | ✅ |
 | 2. ADRs | ✅ |
-| 3. RFC | ⏳ |
+| 3. RFC | ✅ |
 | 4. FDD | ⏳ |
 | 5. PRD | ⏳ |
 | 6. Tracker | ⏳ |
@@ -123,7 +124,34 @@ No ADR-003, mostre a conta da janela (1m+5m+30m+2h+12h = 14h36m) e explique a le
 Salve cada ADR antes de começar o próximo.
 ```
 
-<!-- Próximos: prompts de geração do RFC, FDD, PRD e tracker (fases 3-6). -->
+### 5. RFC conciso, com altura controlada
+
+Usado para gerar o RFC. Impede que ele vire um FDD resumido (payload, colunas, códigos de erro), que uma questão adiada apareça como requisito e que uma leitura minha da reunião seja apresentada como decisão tomada nela.
+
+```text
+Escreva docs/RFC.md em PT-BR. Ele é um documento CONCISO (2 a 4 páginas, ~1.000-1.700 palavras)
+submetido à equipe para revisão. Ele propõe e abre para revisão; os ADRs já registram as decisões
+(docs/adrs/*) e o FDD vai detalhar a implementação.
+
+Use as seções: Metadados | TL;DR | Contexto e problema | Proposta técnica | Alternativas consideradas |
+Questões em aberto | Pontos para confirmação dos revisores | Impacto e riscos | Decisões relacionadas.
+
+Restrições:
+- PROIBIDO no RFC: JSON de payload, lista de colunas, matriz de erros, status codes, códigos de erro,
+  trechos de código. Se precisar disso, escreva "detalhado no FDD".
+- Alternativas: somente as DESCARTADAS NA REUNIÃO, cada uma com o trade-off que motivou o descarte e a
+  fala de origem [hh:mm] Nome.
+- Questões em aberto: somente pontos que a reunião ADIOU ou NÃO DECIDIU (rate limiting, multi-worker,
+  email, endurecer CRUD, retenção). Não transforme nenhum deles em requisito.
+- Pontos para confirmação: deixe explícito que NÃO foram discutidos na reunião; são leituras da análise
+  que os revisores precisam validar.
+- Cada bloco da proposta termina com link para o ADR correspondente.
+- Revisores = participantes da reunião.
+- Cada item rastreável leva seu ID visível (PROP-NN, ALT-NN, OQ-NN, PC-NN, R-NN, IMP-NN).
+Depois de gerar, conte as palavras e reporte.
+```
+
+<!-- Próximos: prompts de geração do FDD, PRD e tracker (fases 4-6). -->
 
 ## Iterações e ajustes
 
@@ -137,13 +165,16 @@ _Em andamento: cada fase acrescenta aqui os momentos em que a IA gerou algo erra
 | 4 | Fase 2 / ADR-003, ADR-004 e ADR-007 | Contexto e decisão com interpretações misturadas às falas | Três trechos apresentavam como fato algo que ninguém disse: "uma chamada sem limite de tempo prenderia o worker" (a Sofia só perguntou qual seria o timeout), "a secret não aparece em nenhuma outra resposta" e "se nenhum endpoint **ativo** quer o status" (a fala é "nenhum webhook do customer"). Além disso, a hipótese "5 envios no total" estava entre aspas, como se fosse fala | Uma checagem automática conferiu se cada trecho entre aspas existe literalmente na transcrição, e reli as frases sem citação. Troquei a primeira pela pergunta literal da Sofia, marquei as outras duas como interpretação posterior à reunião (no caso do "estado ativo", com a fala de apoio [09:21] Bruno) e tirei as aspas da hipótese |
 | 5 | Fase 2 / ADR-003 vs. ADR-005 | Decisão de retry com "no máximo 6 envios por evento" | Inconsistente com o ADR-005, em que o mesmo evento (mesmo `event_id`) vai para cada endpoint inscrito, cada um com o seu próprio retry | Apareceu na leitura cruzada dos números entre os ADRs. Corrigi para "no máximo 6 envios de cada evento para cada endpoint" |
 | 6 | Fase 2 / ADR-002 e script de validação | O ADR do worker citava o nome alternativo `webhook.processor.ts`; o script `validar_adrs.py`, gerado pela IA, conferia citações, seções e caminhos | O arquivo não existe e estava sem a marca "(novo, a criar)". O script não pegou porque só conferia caminhos começando com `src/`, `prisma/` ou `tests/` | Achei com um grep de nomes de arquivo entre crases. Escrevi o caminho completo com a marca e ampliei o script para nomes soltos. Um teste de mutação (erros injetados numa cópia dos ADRs) confirmou que ele passou a acusar o caso |
+| 7 | Fase 3 / RFC (tamanho) | Primeiro rascunho completo do RFC | 2.830 palavras sem a tabela de metadados, 66% acima do teto de 1.700 que o próprio prompt fixava. Só a proposta tinha 741 palavras, as tabelas tinham colunas redundantes e quase toda frase levava citação duplicada | Medi com um script novo e cortei em três rodadas. Tirei a coluna "Por que foi considerada" (a motivação ficou só onde há fala de origem), a ALT-04, que era opcional e continua no ADR-002, os riscos que repetiam impactos ou questões em aberto e os detalhes de implementação que tinham escapado. Fechou em 1.698 na contagem estilo `wc -w` (1.516 sem os símbolos de Markdown das tabelas) |
+| 8 | Fase 3 / RFC (fidelidade) | Proposta, questões em aberto e impactos | Frases mais fortes que a fala. Um "POST" que ninguém disse. O "overengineering" do Diego, dito sobre Redis Cluster, virou argumento contra qualquer infraestrutura. "A ordem vale por pedido" aparecia sem a ressalva do retry, e a introdução dos pontos para confirmação dizia que todos estavam nos ADRs. O impacto na transação omitia a leitura que o ADR-007 registra. Os próprios cortes de tamanho também apagaram qualificadores: "Talvez próxima fase" virou "Próxima fase", e o "por enquanto" da Sofia sumiu da autorização do CRUD | Reli cada frase contra a transcrição e cruzei com os 7 ADRs. Troquei pelas falas literais, restaurei os qualificadores e passei a reler o texto depois de cada rodada de corte, não só no fim |
+| 9 | Fase 3 / RFC vs. ADR-001 | Contexto do RFC dizendo que o Bruno chamou a transação de "já pesada" | A fala é "já é pesada". A citação não literal veio do ADR-001 (L14) e tinha passado pela revisão da fase 2 | O validador do RFC passou a conferir se cada trecho entre aspas existe literalmente na transcrição. Corrigi no RFC. O agente da fase não podia alterar ADRs, então só apontou o problema; corrigi o ADR-001 na conferência da fase |
 
 ## Como navegar a entrega
 
 | Ordem | Arquivo | Pergunta que responde | Status |
 | --- | --- | --- | --- |
 | 1 | [`docs/PRD.md`](./docs/PRD.md) | Por que e o quê? | ⏳ |
-| 2 | [`docs/RFC.md`](./docs/RFC.md) | Como pretendemos resolver e o que ainda está em aberto? | ⏳ |
+| 2 | [`docs/RFC.md`](./docs/RFC.md) | Como pretendemos resolver e o que ainda está em aberto? | ✅ |
 | 3 | [`docs/adrs/`](./docs/adrs/README.md) | Por que decidimos exatamente assim? | ✅ |
 | 4 | [`docs/FDD.md`](./docs/FDD.md) | Como construir, em detalhe? | ⏳ |
 | 5 | [`docs/TRACKER.md`](./docs/TRACKER.md) | De onde veio cada coisa? | ⏳ |

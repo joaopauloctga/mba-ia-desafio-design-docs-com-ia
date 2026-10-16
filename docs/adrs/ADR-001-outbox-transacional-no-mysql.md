@@ -11,7 +11,7 @@ Aceito. Fechado em [09:08] Larissa ("Tá decidido então: outbox em MySQL") e co
 ## Contexto
 
 - Três clientes B2B pediram para ser notificados quando o status dos pedidos muda. Hoje eles consultam `GET /orders` de tempos em tempos, o que deixa a integração "lenta e cara" ([09:00] Marcos). Para eles, menos de 10s já é "tempo real" ([09:02] Marcos).
-- A notificação nasce na mudança de status, feita em `OrderService.changeStatus` (`src/modules/orders/order.service.ts:126-179`). O método já roda uma transação (`this.prisma.$transaction`, L131) que lê o pedido, debita ou repõe estoque quando a transição exige (L151-156), atualiza `orders` (L158) e grava o histórico em `order_status_history` (L159-167). O Bruno descreveu essa transação como "já pesada" ([09:04] Bruno).
+- A notificação nasce na mudança de status, feita em `OrderService.changeStatus` (`src/modules/orders/order.service.ts:126-179`). O método já roda uma transação (`this.prisma.$transaction`, L131) que lê o pedido, debita ou repõe estoque quando a transição exige (L151-156), atualiza `orders` (L158) e grava o histórico em `order_status_history` (L159-167). O Bruno disse que essa transação "já é pesada" ([09:04] Bruno).
 - O código não tem mecanismo de eventos, filas ou webhooks: os módulos de `src/modules/` são apenas `auth`, `customers`, `orders`, `products` e `users`.
 - A pergunta que abriu o tema foi se o disparo seria síncrono no service de orders ou por "algum tipo de fila/outbox" ([09:03] Larissa).
 - Duas forças limitam a escolha:

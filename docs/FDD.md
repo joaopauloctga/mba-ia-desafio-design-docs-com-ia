@@ -15,7 +15,7 @@ Este documento diz **como construir**. O porquê de cada decisão está nos ADRs
 
 - `[hh:mm] Nome` aponta para a [transcrição](../TRANSCRICAO.md); `arquivo:Lx-y`, para linhas do código atual.
 - **(novo, a criar)**: arquivo que ainda não existe (lista na seção 4). **(proposta de implementação)**: o que a reunião não decidiu; pode mudar na revisão sem reabrir ADR.
-- **PC-NN** e **OQ-NN** remetem aos pontos para confirmação e às questões em aberto do [RFC](./RFC.md). IDs deste documento: `OT`, `DADOS`, `FLUXO`, `CT`, `ERR`, `RES`, `OBS`, `INT`, `CAT` e `R`.
+- **PC-NN** e **OQ-NN** remetem aos pontos para confirmação e às questões em aberto do [RFC](./RFC.md). IDs deste documento: `OT`, `EXC`, `ARQ`, `DADOS`, `FLUXO`, `CT`, `ERR`, `RES`, `LIM`, `OBS`, `INT`, `COMP`, `IMPL`, `CAT` e `R`.
 - Nomes: payload para o cliente em `snake_case` ([09:43] Diego); API de configuração em `camelCase`, como as respostas atuais (`tests/orders.test.ts:31-39`); tabelas novas em `snake_case` via `@@map`, colunas em `camelCase`, como as existentes (`prisma/migrations/20260519182739_init/migration.sql:50-69`).
 
 ## 1. Contexto e motivação técnica
@@ -62,39 +62,32 @@ Metas verificáveis da implementação; as de produto estão no [PRD](./PRD.md).
 
 **Fora desta entrega**
 
-| Item | Situação | Fonte |
-| --- | --- | --- |
-| Evento na criação do pedido | Não emitido: a criação grava `null → PENDING` por outro caminho (`order.service.ts:106-113`); leitura registrada no [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md) | [09:40] Bruno |
-| Webhooks de entrada | Descartado | [09:02] Marcos |
-| Email ao cliente após falhas seguidas | "Talvez próxima fase, depois que a gente medir o impacto" (OQ-03 do RFC) | [09:37] Larissa |
-| Rate limiting de saída | "observar e decidir depois" (OQ-01 do RFC) | [09:39] Larissa |
-| Dashboard para o cliente | "Painel é projeto separado do time de frontend" | [09:40] Larissa |
-| Arquivamento das linhas entregues | Fora do escopo desta feature (OQ-05 do RFC) | [09:08] Diego |
-| Vários workers em paralelo | "problema do futuro, não agora" (OQ-02 do RFC) | [09:13] Diego |
-| Exactly-once | Descartado | [09:25] Diego |
-| Items do pedido no payload | Descartado; o cliente consulta `GET /orders/:id` | [09:43] Diego |
-| Autorização do CRUD por dono do customer | "Mais pra frente a gente pode endurecer" (OQ-04 do RFC) | [09:37] Sofia |
-| Endpoint para listar a DLQ | Não previsto (PC-05 do RFC) | [09:18] Diego |
-| Biblioteca de métricas ou tracing | "Não vamos botar nada novo" (seção 10) | [09:29] Bruno |
+As exclusões de produto estão no [PRD](./PRD.md) (OOS-01 a OOS-09) e as questões adiadas, no [RFC](./RFC.md) (OQ-01 a OQ-05). Aqui ficam só as exclusões de implementação:
+
+| ID | Item | Situação | Fonte |
+| --- | --- | --- | --- |
+| EXC-01 | Evento na criação do pedido | Não emitido: a criação grava `null → PENDING` por outro caminho (`order.service.ts:106-113`); leitura registrada no [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md) | [09:40] Bruno |
+| EXC-02 | Endpoint para listar a DLQ | Não previsto (PC-05 do RFC) | [09:18] Diego |
+| EXC-03 | Biblioteca de métricas ou tracing | "Não vamos botar nada novo" (seção 10) | [09:29] Bruno |
 
 ## 4. Arquivos novos (a criar)
 
 Nenhum destes arquivos existe hoje, e nenhum serve como origem `CODIGO` no tracker. Os existentes que mudam estão na seção 11.
 
-| Caminho | Responsabilidade |
-| --- | --- |
-| `src/worker.ts` (novo, a criar) | Entry-point do worker: carrega `env` e o Prisma client do processo, inicia o loop, trata `SIGINT`/`SIGTERM` |
-| `src/modules/webhooks/webhook.routes.ts` (novo, a criar) | `buildWebhookRouter` (CT-01 a CT-06) e `buildWebhookAdminRouter` (CT-07) |
-| `src/modules/webhooks/webhook.controller.ts` (novo, a criar) | `WebhookController`: handlers com `try/catch` e `next(err)` |
-| `src/modules/webhooks/webhook.service.ts` (novo, a criar) | `WebhookService`: CRUD, checagem de `https`, secret, rotação e replay |
-| `src/modules/webhooks/webhook.repository.ts` (novo, a criar) | `WebhookRepository`: acesso às tabelas novas pela API |
-| `src/modules/webhooks/webhook.schemas.ts` (novo, a criar) | Schemas Zod (seção 7) |
-| `src/modules/webhooks/webhook.worker.ts` (novo, a criar) | `WebhookWorker`: polling, envio, retry, DLQ, recuperação, parada controlada |
-| `src/modules/webhooks/webhook.publisher.ts` (novo, a criar) | `publishWebhookEvent`, chamada pelo `changeStatus` |
-| `src/modules/webhooks/webhook.signer.ts` (novo, a criar) | Geração da secret e cálculo do `X-Signature` |
-| `src/modules/webhooks/webhook.errors.ts` (novo, a criar) | Classes de erro e códigos de entrega (seção 8) |
-| `prisma/migrations/<timestamp>_webhooks/migration.sql` (novo, a criar) | Migration aditiva gerada por `npm run db:migrate` |
-| `tests/webhooks.test.ts` (novo, a criar) | Testes da seção 13, no padrão de `tests/orders.test.ts` |
+| ID | Caminho | Responsabilidade |
+| --- | --- | --- |
+| ARQ-01 | `src/worker.ts` (novo, a criar) | Entry-point do worker: carrega `env` e o Prisma client do processo, inicia o loop, trata `SIGINT`/`SIGTERM` |
+| ARQ-02 | `src/modules/webhooks/webhook.routes.ts` (novo, a criar) | `buildWebhookRouter` (CT-01 a CT-06) e `buildWebhookAdminRouter` (CT-07) |
+| ARQ-03 | `src/modules/webhooks/webhook.controller.ts` (novo, a criar) | `WebhookController`: handlers com `try/catch` e `next(err)` |
+| ARQ-04 | `src/modules/webhooks/webhook.service.ts` (novo, a criar) | `WebhookService`: CRUD, checagem de `https`, secret, rotação e replay |
+| ARQ-05 | `src/modules/webhooks/webhook.repository.ts` (novo, a criar) | `WebhookRepository`: acesso às tabelas novas pela API |
+| ARQ-06 | `src/modules/webhooks/webhook.schemas.ts` (novo, a criar) | Schemas Zod (seção 7) |
+| ARQ-07 | `src/modules/webhooks/webhook.worker.ts` (novo, a criar) | `WebhookWorker`: polling, envio, retry, DLQ, recuperação, parada controlada |
+| ARQ-08 | `src/modules/webhooks/webhook.publisher.ts` (novo, a criar) | `publishWebhookEvent`, chamada pelo `changeStatus` |
+| ARQ-09 | `src/modules/webhooks/webhook.signer.ts` (novo, a criar) | Geração da secret e cálculo do `X-Signature` |
+| ARQ-10 | `src/modules/webhooks/webhook.errors.ts` (novo, a criar) | Classes de erro e códigos de entrega (seção 8) |
+| ARQ-11 | `prisma/migrations/<timestamp>_webhooks/migration.sql` (novo, a criar) | Migration aditiva gerada por `npm run db:migrate` |
+| ARQ-12 | `tests/webhooks.test.ts` (novo, a criar) | Testes da seção 13, no padrão de `tests/orders.test.ts` |
 
 Origem dos nomes: o entry-point do worker vem de [09:11] Larissa; o módulo segue o padrão dos existentes ([09:27] Bruno); `webhook.worker.ts` é de [09:28] Bruno, que também citou `src/modules/webhooks/webhook.processor.ts` (novo, a criar), nome não usado; a função `publishWebhookEvent` é de [09:41] Bruno. Os arquivos `publisher`, `signer` e `errors` são propostas de organização, e juntá-los ao `webhook.service.ts` também atende às decisões.
 
@@ -307,7 +300,7 @@ sequenceDiagram
         W->>DB: FAILED e DLQ, sem retry
       else pronto para enviar
         W->>EP: POST assinado, timeout de 10s
-        W->>DB: 2xx vira DELIVERED; o resto segue o FLUXO-03
+        W->>DB: 2xx vira DELIVERED, o resto segue o FLUXO-03
       end
     end
   end
@@ -382,7 +375,7 @@ sequenceDiagram
   alt id inexistente ou replay já feito
     S-->>A: 404 ou 409
   else ok
-    S-->>A: 202; o worker entrega no próximo ciclo (até 2s)
+    S-->>A: 202, o worker entrega no próximo ciclo (até 2s)
   end
 ```
 
@@ -451,7 +444,7 @@ As rotas de CT-06 e CT-07 foram ditas na reunião; CT-01 a CT-04 aplicam o padr�
 | `webhookIdParamSchema`, `deadLetterIdParamSchema` | `id` UUID |
 | `events` (regra comum) | `z.array(z.nativeEnum(OrderStatus))` com `.min(1)`, só valores de `SUBSCRIBABLE_STATUSES` (derivado de `allowedTransitions`, porque `transitions` não é exportado; INT-02) e sem repetição |
 
-A recusa de `http` foi pedida como "erro de validação" no "schema Zod" ([09:23] Sofia), com o código `WEBHOOK_INVALID_URL` ([09:28] Bruno). Para ter os dois, o Zod valida o formato e o `WebhookService` checa o protocolo (ERR-02); só no Zod, a resposta seria `VALIDATION_ERROR`.
+A recusa de `http` foi pedida como "erro de validação" no "schema Zod" ([09:23] Sofia). Este FDD usa o código `WEBHOOK_INVALID_URL`, um dos exemplos de [09:28] Bruno, e por isso divide a checagem (proposta de implementação): o Zod valida o formato e o `WebhookService` checa o protocolo (ERR-02). Só no Zod, a resposta seria `VALIDATION_ERROR` (`validate.middleware.ts:25-33`).
 
 ### CT-01: cadastrar webhook
 
@@ -508,7 +501,7 @@ Resposta `200 OK`, no formato de `paginated()` (`src/shared/http/response.ts:22-
 | 200 | — | Lista, possivelmente vazia |
 | 400 | `VALIDATION_ERROR` | `customerId` ausente ou não UUID; `page`/`pageSize` fora da faixa |
 
-**Semântica.** Só leitura. `customerId` na query, paginação como `GET /orders` (`src/modules/orders/order.schemas.ts:23-30`) e ordem por `createdAt` decrescente são proposta de implementação. Customer inexistente devolve lista vazia, como `GET /orders?customerId=` hoje; removidos não aparecem.
+**Semântica.** Só leitura, sem corpo no request. O "no body ou no path" de [09:32] Larissa foi dito sobre o cadastro; num GET não há corpo, e o `customerId` vai na query, como o filtro de `GET /orders` (`src/modules/orders/order.schemas.ts:27`). A query, a paginação como `GET /orders` (`src/modules/orders/order.schemas.ts:23-30`) e a ordem por `createdAt` decrescente são proposta de implementação. Customer inexistente devolve lista vazia, como `GET /orders?customerId=` hoje; removidos não aparecem.
 
 ### CT-03: editar webhook
 
@@ -554,7 +547,7 @@ Resposta `204 No Content`, sem corpo, como `DELETE /orders/:id` (`src/modules/or
 | 400 | `VALIDATION_ERROR` | `id` não UUID |
 | 404 | `WEBHOOK_NOT_FOUND` | Id inexistente ou já removido |
 
-**Semântica.** Remoção lógica (proposta de implementação): `deletedAt` preenchido e `active = false`; o endpoint sai da listagem e segue o FLUXO-06. Histórico e DLQ ficam como "evidence pra debug e reprocessamento" ([09:18] Diego). Repetir devolve 404.
+**Semântica.** Sem corpo no request; o id vem no path. Remoção lógica (proposta de implementação): `deletedAt` preenchido e `active = false`; o endpoint sai da listagem e segue o FLUXO-06. Histórico e DLQ ficam como "evidence pra debug e reprocessamento" ([09:18] Diego). Repetir devolve 404.
 
 ### CT-05: rotacionar a secret
 
@@ -614,7 +607,7 @@ Resposta `200 OK`, com um item de exemplo (o `payload` é o snapshot de CT-08, p
 | 400 | `VALIDATION_ERROR` | `id` não UUID |
 | 404 | `WEBHOOK_NOT_FOUND` | Id inexistente |
 
-**Semântica.** Só leitura: as 100 entregas mais recentes, em `createdAt` decrescente e sem paginação, com "sucesso/falha, payload, response, tempo de resposta" ([09:34] Marcos). Cada item é um processamento (DADOS-04); encerramento sem chamada vem com `responseStatus` nulo e `durationMs` 0. `deadLetterId` marca o item que levou à DLQ e é o id de CT-07. Responde para endpoints removidos (proposta de implementação).
+**Semântica.** Só leitura, sem corpo no request: as 100 entregas mais recentes, em `createdAt` decrescente e sem paginação, com "sucesso/falha, payload, response, tempo de resposta" ([09:34] Marcos). Cada item é um processamento (DADOS-04); encerramento sem chamada vem com `responseStatus` nulo e `durationMs` 0. `deadLetterId` marca o item que levou à DLQ e é o id de CT-07. Responde para endpoints removidos (proposta de implementação).
 
 ### CT-07: replay de evento da DLQ (ADMIN)
 
@@ -638,8 +631,8 @@ Resposta `202 Accepted`:
 | 202 | — | Evento recolocado na outbox; a entrega acontece no próximo ciclo do worker |
 | 400 | `VALIDATION_ERROR` | `id` não UUID |
 | 403 | `FORBIDDEN` | Usuário sem role `ADMIN` (mensagem de `requireRole`, `src/middlewares/auth.middleware.ts:55-58`) |
-| 404 | `WEBHOOK_DEAD_LETTER_NOT_FOUND` | Id da DLQ inexistente (ERR-04) |
-| 409 | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` | Linha já reprocessada; `details` traz `replayedAt` e `replayedById` (ERR-05) |
+| 404 | `WEBHOOK_DEAD_LETTER_NOT_FOUND` | Id da DLQ inexistente (ERR-03) |
+| 409 | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` | Linha já reprocessada; `details` traz `replayedAt` e `replayedById` (ERR-04) |
 
 **Semântica.** Sem body; 202 porque a entrega é assíncrona (proposta de implementação). Mesmo `eventId`, DLQ e outbox na mesma transação e log de quem fez, como no FLUXO-04. Repetir devolve 409.
 
@@ -685,7 +678,19 @@ X-Signature: sha256=ff4f327ee11319c6b83685531578f409c426a53d5a814b63e34d95181075
 
 Exemplo de janela de rotação: com a secret de CT-01 como atual e `2b8f6d4a0c9e7b5f3a1d8c6e4b2f0a9d7c5e3b1f8a6d4c2e0b9f7a5d3c1e8b6f` como anterior, o mesmo corpo sai com `X-Signature: sha256=ff4f327ee11319c6b83685531578f409c426a53d5a814b63e34d9518107533ba,sha256=d2841dc35f61ea929eea261fe43d3e8a09f3362c0b30a7680bd3c7351f28deb6`.
 
-**Resposta esperada do cliente.** Qualquer 2xx em até 10s confirma a entrega; o corpo é ignorado e guardado truncado no histórico. Qualquer outro status (inclusive 3xx, porque o worker não segue redirect), timeout ou erro de rede é falha e segue o FLUXO-03.
+**Resposta esperada do cliente.** O worker só olha o status; o corpo é ignorado e guardado truncado no histórico (CT-06). Exemplo de confirmação:
+
+```http
+HTTP/1.1 200 OK
+Content-Length: 0
+```
+
+| Resposta do cliente | Resultado no worker | Código gravado |
+| --- | --- | --- |
+| 2xx em até 10s | Entrega confirmada: `DELIVERED` | — |
+| 3xx (o worker não segue redirect), 4xx ou 5xx | Falha, segue o FLUXO-03 | `WEBHOOK_DELIVERY_HTTP_ERROR` (ERR-11) |
+| Nenhuma resposta completa em 10s | Falha, segue o FLUXO-03 | `WEBHOOK_DELIVERY_TIMEOUT` (ERR-10) |
+| Erro de rede, DNS ou TLS | Falha, segue o FLUXO-03 | `WEBHOOK_DELIVERY_NETWORK_ERROR` (ERR-12) |
 
 **Assinatura.** Em `src/modules/webhooks/webhook.signer.ts` (novo, a criar), com `createHmac` e `randomBytes` de `node:crypto`:
 
@@ -700,7 +705,7 @@ No cliente (exemplo para o portal, [09:26] Marcos): recalcular a assinatura sobr
 
 ## 8. Matriz de erros
 
-Todos os códigos novos usam o prefixo `WEBHOOK_` ("Prefixo WEBHOOK_ pra tudo do módulo", [09:29] Larissa). A reunião citou três: "WEBHOOK_NOT_FOUND, WEBHOOK_INVALID_URL, WEBHOOK_SECRET_REQUIRED, etc." ([09:28] Bruno); os demais nomes são proposta de implementação. Erros genéricos existentes são reaproveitados como estão ([09:30] Larissa).
+Todos os códigos novos usam o prefixo `WEBHOOK_` ("Prefixo WEBHOOK_ pra tudo do módulo", [09:29] Larissa). A reunião citou três: "WEBHOOK_NOT_FOUND, WEBHOOK_INVALID_URL, WEBHOOK_SECRET_REQUIRED, etc." ([09:28] Bruno); os demais nomes são proposta de implementação. Erros genéricos existentes são reaproveitados como estão ([09:30] Larissa). Numeração: `ERR-0N` para os erros da API e `ERR-1N` para os de entrega.
 
 ### Erros da API (resposta HTTP via `errorMiddleware`)
 
@@ -709,17 +714,14 @@ Classes em `src/modules/webhooks/webhook.errors.ts` (novo, a criar), no molde de
 | ID | Código | HTTP | Classe (nova) | Estende | Mensagem e `details` | Quando | Fonte |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ERR-01 | `WEBHOOK_NOT_FOUND` | 404 | `WebhookNotFoundError` | `AppError` (`src/shared/errors/app-error.ts:3-16`). Não estende `NotFoundError` (`http-errors.ts:27-31`), que fixa o código `NOT_FOUND` | `Webhook not found` | Id inexistente; em CT-03, CT-04 e CT-05, também endpoint removido | [09:28] Bruno |
-| ERR-02 | `WEBHOOK_INVALID_URL` | 400 | `WebhookInvalidUrlError` | `BadRequestError` (`http-errors.ts:3-7`), que aceita código próprio | `Webhook URL must use https`; `details.url` | Protocolo diferente de `https:` em CT-01 e CT-03 | [09:23] Sofia, [09:28] Bruno |
-| ERR-04 | `WEBHOOK_DEAD_LETTER_NOT_FOUND` | 404 | `WebhookDeadLetterNotFoundError` | `AppError` | `Dead letter entry not found` | Id da DLQ inexistente em CT-07 | [09:18] Diego (rota com `:id`) |
-| ERR-05 | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` | 409 | `WebhookDeadLetterAlreadyReplayedError` | `ConflictError` (`http-errors.ts:33-37`) | `Dead letter entry was already replayed`; `details` com `replayedAt` e `replayedById` | Linha da DLQ já reprocessada (proposta de implementação: um replay por linha) | [09:36] Sofia |
-
-**ERR-03 não é criado:** filtro de status inválido já sai como `400 VALIDATION_ERROR` (`validate.middleware.ts:25-33`); o número fica reservado.
-
+| ERR-02 | `WEBHOOK_INVALID_URL` | 400 | `WebhookInvalidUrlError` | `BadRequestError` (`http-errors.ts:3-7`), que aceita código próprio | `Webhook URL must use https`; `details.url` | Protocolo diferente de `https:` em CT-01 e CT-03, checado no service (proposta de implementação) | [09:23] Sofia, [09:28] Bruno |
+| ERR-03 | `WEBHOOK_DEAD_LETTER_NOT_FOUND` | 404 | `WebhookDeadLetterNotFoundError` | `AppError` | `Dead letter entry not found` | Id da DLQ inexistente em CT-07 | [09:18] Diego (rota com `:id`) |
+| ERR-04 | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` | 409 | `WebhookDeadLetterAlreadyReplayedError` | `ConflictError` (`http-errors.ts:33-37`) | `Dead letter entry was already replayed`; `details` com `replayedAt` e `replayedById` | Linha da DLQ já reprocessada (proposta de implementação: um replay por linha) | [09:36] Sofia |
 **Reaproveitados** (`src/shared/errors/http-errors.ts`): `VALIDATION_ERROR` 400 (L9-13, via `validate`), `UNAUTHORIZED` 401 (L15-19, via `authenticate`), `FORBIDDEN` 403 (L21-25, via `requireRole`, em CT-07), `NOT_FOUND` 404 (`NotFoundError('Customer')`, L27-31, em CT-01) e `INTERNAL_SERVER_ERROR` 500 (`error.middleware.ts:56-64`).
 
 ### Erros de entrega (gravados pelo worker, não são resposta HTTP)
 
-Lista `as const` em `webhook.errors.ts`, gravada em `webhook_deliveries.errorCode`, `webhook_outbox.lastError` e `webhook_dead_letter.reason`/`lastErrorCode`.
+Lista `as const` em `src/modules/webhooks/webhook.errors.ts` (novo, a criar), gravada em `webhook_deliveries.errorCode`, `webhook_outbox.lastError` e `webhook_dead_letter.reason`/`lastErrorCode`.
 
 | ID | Código | Retry? | DLQ? | Quando | Fonte |
 | --- | --- | --- | --- | --- | --- |
@@ -754,10 +756,10 @@ Lista `as const` em `webhook.errors.ts`, gravada em `webhook_deliveries.errorCod
 
 **Limitações conhecidas**
 
-- **Ordem.** "Não é garantia de ordering global, só por order_id e enquanto for single-worker" ([09:13] Larissa), e um evento em retry pode ser ultrapassado pelo seguinte do mesmo pedido; o cliente reconcilia por `timestamp`, `to_status` ou `GET /orders/:id` (PC-03 do RFC).
-- **Fila única.** Um endpoint lento ocupa até 10s por envio e atrasa o resto do lote, de qualquer cliente: um lote de 10 pode levar cerca de 100s, e a meta de 10s deixa de valer (OBS-01, OBS-03). Paralelizar depende de OQ-02 do RFC.
-- **Rajadas.** Sem rate limiting, "50 pedidos mudando de status em um minuto" viram 50 chamadas ([09:38] Diego); fica em observação (OQ-01 do RFC).
-- **Duplicatas.** Queda do worker entre o 2xx e o `DELIVERED`, ou resposta depois dos 10s, repetem o envio: custo aceito do at-least-once ([ADR-005](./adrs/ADR-005-entrega-at-least-once-com-x-event-id.md)).
+- **LIM-01 Ordem.** "Não é garantia de ordering global, só por order_id e enquanto for single-worker" ([09:13] Larissa), e um evento em retry pode ser ultrapassado pelo seguinte do mesmo pedido; o cliente reconcilia por `timestamp`, `to_status` ou `GET /orders/:id` (PC-03 do RFC).
+- **LIM-02 Fila única.** Um endpoint lento ocupa até 10s por envio e atrasa o resto do lote, de qualquer cliente: um lote de 10 pode levar cerca de 100s, e a meta de 10s deixa de valer (OBS-01, OBS-03). Paralelizar depende de OQ-02 do RFC.
+- **LIM-03 Rajadas.** Sem rate limiting, "50 pedidos mudando de status em um minuto" viram 50 chamadas ([09:38] Diego); fica em observação (OQ-01 do RFC).
+- **LIM-04 Duplicatas.** Queda do worker entre o 2xx e o `DELIVERED`, ou resposta depois dos 10s, repetem o envio: custo aceito do at-least-once ([ADR-005](./adrs/ADR-005-entrega-at-least-once-com-x-event-id.md)).
 
 ## 10. Observabilidade
 
@@ -802,7 +804,7 @@ WHERE `status` = 'PENDING' AND `nextAttemptAt` <= UTC_TIMESTAMP(3);
 | `webhook_moved_to_dead_letter` | error | Entrada na DLQ, inclusive por endpoint inativo ou removido | os anteriores + `deadLetterId`, `reason` |
 | `webhook_dead_letter_replayed` | info | CT-07 | `userId`, `requestId`, `deadLetterId`, `outboxId`, `eventId`, `webhookId` |
 | `webhook_secret_rotated` | info | CT-05 | `webhookId`, `userId`, `requestId`, `previousSecretExpiresAt` |
-| `webhook_endpoint_created`, `webhook_endpoint_updated`, `webhook_endpoint_deleted` | info | CT-01, CT-03, CT-04 | `webhookId`, `customerId`, `userId`, `requestId` (proposta de implementação, ver R-08) |
+| `webhook_endpoint_created`, `webhook_endpoint_updated`, `webhook_endpoint_deleted` | info | CT-01, CT-03, CT-04 | `webhookId`, `customerId`, `userId`, `requestId` (proposta de implementação, para rastrear quem mexeu enquanto o CRUD está aberto a qualquer usuário autenticado, OQ-04 do RFC) |
 | `webhook_worker_cycle_failed` | error | Erro no ciclo | `err` |
 | `webhook_worker_heartbeat` | info | OBS-09 | `duePending`, `oldestDueAgeS`, `deadLetterOpen` |
 | `shutdown_initiated` | info | `SIGINT`/`SIGTERM`, como em `src/server.ts:14` | `signal` |
@@ -847,7 +849,7 @@ Caminhos conferidos no código atual; os novos estão na seção 4. Mudam só `s
 | INT-10 | `src/app.ts`, `src/routes/index.ts` | `buildControllers` (`app.ts:26-53`), com `customerService` em L35; `Controllers` (`routes/index.ts:13-19`) e `buildApiRouter` (L21-31) | `buildControllers` cria `WebhookRepository(prisma)`, `WebhookService(repository, customerService, prisma)` (o `prisma` abre a transação do replay) e `WebhookController`, e devolve `webhooks`. `buildApiRouter` monta `/webhooks` com `buildWebhookRouter` e `/admin/webhooks` com `buildWebhookAdminRouter`; rotas e schemas na seção 7 | Sim |
 | INT-11 | `src/modules/orders/order.routes.ts`, `src/modules/orders/order.schemas.ts`, `src/modules/orders/order.controller.ts`, `src/modules/orders/order.repository.ts` | `buildOrderRouter` (`order.routes.ts:12-27`), schemas (`order.schemas.ts:4-30`), `OrderController` (`order.controller.ts:6-56`), `OrderRepository` (`order.repository.ts:18-19`) | Moldes do módulo ([09:27] Bruno); o contrato de `PATCH /orders/:id/status` (`order.routes.ts:19-23`) não muda | Não |
 | INT-12 | `src/shared/http/response.ts` | `paginated()` (L22-24) | Resposta de CT-02 | Não |
-| INT-13 | `package.json` | Scripts `dev` (L11) e `start` (L13); `dependencies` (L25-34), com `uuid` (L32) | Scripts `worker` (`node --env-file=.env dist/worker.js`) e `dev:worker` (`tsx watch --env-file=.env` sobre `src/worker.ts` (novo, a criar)), como o "npm run worker" de [09:11] Larissa. Nenhuma dependência nova | Só `scripts` |
+| INT-13 | `package.json` | Scripts `dev` (L11) e `start` (L13); `dependencies` (L25-34), com `uuid` (L32) | Scripts `worker` (`node --env-file=.env dist/worker.js`, com o `dist/worker.js` gerado pelo `npm run build`) e `dev:worker` (`tsx watch --env-file=.env` sobre `src/worker.ts` (novo, a criar)), como o "npm run worker" de [09:11] Larissa. Nenhuma dependência nova | Só `scripts` |
 | INT-14 | `tests/setup.ts`, `tests/helpers/factories.ts`, `vitest.config.ts`, `tests/orders.test.ts` | Limpeza no `beforeEach` (`setup.ts:8-16`); `createTestCustomer` (`factories.ts:42-60`) e `bootstrapAuthenticatedUser(role)` (L76-83); execução serial (`vitest.config.ts:10-17`); teste de `PATCH /status` (`orders.test.ts:59-87`) | O `beforeEach` apaga `webhookDelivery`, `webhookDeadLetter`, `webhookOutbox` e `webhookEndpoint` antes de `orderStatusHistory` (L9), por causa das FKs. `tests/webhooks.test.ts` (novo, a criar) usa as factories, com `bootstrapAuthenticatedUser('ADMIN')` em CT-07 | Só `setup.ts` |
 | INT-15 | `prisma/migrations/20260519182739_init/migration.sql` | `CREATE TABLE orders` (L50-69), colunas em camelCase; FKs em L110-125 | Referência de nomes e FKs; a migration nova é separada e aditiva | Não |
 | INT-16 | `src/modules/customers/customer.service.ts` | `getById` com `NotFoundError('Customer')` (L23-27); `delete` físico (L60-63) | CT-01 valida o customer com `getById`; customer com webhooks deixa de poder ser removido (seção 12) | Não |
@@ -881,20 +883,20 @@ import { publishWebhookEvent } from '../webhooks/webhook.publisher.js'; // novo 
 
 **Compatibilidade com o que já existe**
 
-| Ponto | Efeito |
-| --- | --- |
-| Contratos de `/orders` | Inalterados: `PATCH /orders/:id/status` (`order.routes.ts:19-23`) devolve o mesmo corpo, e `tests/orders.test.ts` passa sem mudança (CAT-16) |
-| Latência do `PATCH /orders/:id/status` | Mais 1 leitura de `webhook_endpoints` em toda mudança de status e 1 inserção em lote quando há inscritos |
-| Novo modo de falha desse `PATCH` | Se a inserção na outbox falhar, a mudança de status falha junto (500), por decisão ([09:40] Bruno) |
-| `DELETE /orders/:id` | Não é afetado: `webhook_outbox.orderId` não tem FK (DADOS-03) |
-| `DELETE /customers/:id` | Customer com webhooks, mesmo removidos, não pode mais ser apagado: a FK `RESTRICT` gera `P2003`, não tratado pelo `errorMiddleware` (`error.middleware.ts:37-54`), e vira 500, como já ocorre com customer com pedidos (`migration.sql:110`). Fica assim nesta fase (proposta de implementação) |
+| ID | Ponto | Efeito |
+| --- | --- | --- |
+| COMP-01 | Contratos de `/orders` | Inalterados: `PATCH /orders/:id/status` (`order.routes.ts:19-23`) devolve o mesmo corpo, e `tests/orders.test.ts` passa sem mudança (CAT-16) |
+| COMP-02 | Latência do `PATCH /orders/:id/status` | Mais 1 leitura de `webhook_endpoints` em toda mudança de status e 1 inserção em lote quando há inscritos (filtro na inserção, [09:34] Bruno) |
+| COMP-03 | Novo modo de falha desse `PATCH` | Se a inserção na outbox falhar, a mudança de status falha junto (500), por decisão ([09:40] Bruno) |
+| COMP-04 | `DELETE /orders/:id` | Não é afetado: o `delete` (`order.service.ts:181-192`) segue igual, porque `webhook_outbox.orderId` não tem FK (DADOS-03) |
+| COMP-05 | `DELETE /customers/:id` | Customer com webhooks, mesmo removidos, não pode mais ser apagado: a FK `RESTRICT` gera `P2003`, não tratado pelo `errorMiddleware` (`error.middleware.ts:37-54`), e vira 500, como já ocorre com customer com pedidos (`migration.sql:110`). Fica assim nesta fase (proposta de implementação) |
 
 **Implantação**
 
-1. Aplicar a migration.
-2. Subir a API; até o worker subir, os eventos ficam `PENDING`, sem perda.
-3. Subir o worker com `npm run worker` em **uma única instância**: duas quebrariam a ordem por pedido ([09:12] Diego) e poderiam enviar a mesma linha duas vezes.
-4. Para reverter, parar o worker e voltar a API; os pendentes saem quando o worker voltar.
+1. **IMPL-01** Aplicar a migration nova (ARQ-11).
+2. **IMPL-02** Subir a API; até o worker subir, os eventos ficam `PENDING`, sem perda ([09:06] Diego).
+3. **IMPL-03** Subir o worker com `npm run worker` ([09:11] Larissa) em **uma única instância**: duas quebrariam a ordem por pedido ([09:12] Diego) e poderiam enviar a mesma linha duas vezes.
+4. **IMPL-04** Para reverter, parar o worker e voltar a API; os pendentes saem quando o worker voltar (proposta de implementação).
 
 **Configuração.** Nenhuma variável de ambiente nova: os valores são constantes do worker (FLUXO-02); torná-los configuráveis exigiria mexer em `src/config/env.ts` (proposta de implementação: fica para depois). A exceção depende do PC-04 do RFC: se a revisão de segurança decidir cifrar a secret, a chave de cifra entra como variável nova em `src/config/env.ts`.
 
@@ -932,19 +934,12 @@ Todos viram testes em `tests/webhooks.test.ts` (novo, a criar), com Vitest e Sup
 
 ## 14. Riscos e mitigação
 
-Riscos técnicos da implementação; probabilidade e impacto são estimativas deste FDD. Os riscos de produto estão no [PRD](./PRD.md).
+Riscos da implementação; probabilidade e impacto são estimativas deste FDD. Os riscos de produto estão no [PRD](./PRD.md) (seção 10) e os de arquitetura, no [RFC](./RFC.md) (seção 7): crescimento da outbox, worker parado, ordem por pedido e fila única. A mitigação técnica destes está nas seções 9 e 10 deste FDD (LIM-01 a LIM-04, OBS-02, OBS-03 e OBS-09).
 
 | ID | Risco | Prob. | Impacto | Mitigação | Fonte |
 | --- | --- | --- | --- | --- | --- |
-| R-01 | A outbox cresce sem arquivamento e a leitura fica lenta | Média | Médio | Índice `(status, createdAt)`, leitura limitada de pendentes vencidos; OBS-02, OBS-03; arquivamento em OQ-05 do RFC | [09:07] Bruno, [09:08] Diego |
-| R-02 | Worker parado: eventos se acumulam sem entrega | Média | Alto | Nada se perde (fica `PENDING`); OBS-09, OBS-03; RES-10 | [09:06] Diego, [09:11] Diego |
-| R-03 | Endpoint lento ocupa a fila única e atrasa os outros clientes | Média | Médio | Timeout de 10s (RES-05) e lote de 10; OBS-01 e OBS-06 apontam o endpoint; paralelismo em OQ-02 do RFC | [09:42] Diego, [09:12] Diego |
-| R-04 | Cliente processa o mesmo evento mais de uma vez | Média | Médio | Mesmo `X-Event-Id` em toda repetição; deduplicação documentada no portal | [09:25] Diego, [09:26] Marcos |
-| R-05 | Eventos do mesmo pedido fora de ordem sob retry | Baixa | Baixo | Limitação documentada (seção 9); reconciliação por `timestamp`, `to_status` ou `GET /orders/:id` (PC-03 do RFC) | [09:13] Larissa, [09:14] Marcos |
-| R-06 | Vazamento de secret | Baixa | Alto | Secret por endpoint, rotação com 24h de convivência, exposta só em CT-01 e CT-05; redact (OBS-11); revisão de segurança | [09:22] Diego, [09:21] Sofia |
-| R-07 | Falha na inserção da outbox derruba a mudança de status | Baixa | Alto | Comportamento decidido; inserção mínima e sem rede, coberta por CAT-02 | [09:40] Bruno |
-| R-08 | Qualquer usuário autenticado gerencia webhooks de qualquer customer (`User` não tem vínculo com `Customer`, `prisma/schema.prisma:25-38`) | Média | Médio | Aceito "Por enquanto sim"; logs do CRUD com `userId` (proposta de implementação); OQ-04 do RFC | [09:37] Sofia |
-| R-09 | Rajada de mudanças de status sobrecarrega o cliente | Média | Médio | OBS-08 mede o volume por endpoint; rate limiting em observação (OQ-01 do RFC) | [09:38] Diego |
-| R-10 | URL `https` apontando para endereço interno da rede do OMS | Baixa | Alto | Não discutido; esta entrega não bloqueia endereços. Sugerido para a revisão de segurança | [09:23] Sofia (só a regra do `https` foi decidida) |
-| R-11 | Cliente fora do ar por mais de 14h36m perde a entrega automática | Baixa | Médio | DLQ com alerta (OBS-05) e replay manual (CT-07); aceito pelo PM | [09:17] Marcos |
-| R-12 | Duas instâncias do worker por engano | Baixa | Médio | Instância única na implantação (seção 12); a reserva condicionada a `PENDING` reduz, sem eliminar, o envio duplicado | [09:12] Diego |
+| R-01 | Falha na inserção da outbox derruba a mudança de status (500 no `PATCH`, COMP-03) | Baixa | Alto | Comportamento decidido; inserção mínima e sem rede, coberta por CAT-02 | [09:40] Bruno |
+| R-02 | Duas instâncias do worker por engano: ordem quebrada e envio duplicado | Baixa | Médio | Instância única na implantação (IMPL-03); a reserva condicionada a `PENDING` reduz, sem eliminar, o envio duplicado | [09:12] Diego |
+| R-03 | URL `https` apontando para endereço interno da rede do OMS | Baixa | Alto | Não discutido; esta entrega não bloqueia endereços. Sugerido para a revisão de segurança | [09:23] Sofia (só a regra do `https` foi decidida) |
+| R-04 | Secret exposta pelo próprio OMS, em log, resposta da API ou banco | Baixa | Alto | Secret só em CT-01 e CT-05; `redactPaths` ampliado (OBS-11), porque hoje não cobre secret (`src/shared/logger/index.ts:4-11`); forma de guardar na revisão de segurança (PC-04 do RFC) | [09:46] Sofia |
+| R-05 | Customer com webhooks deixa de poder ser removido: o `P2003` vira 500 (COMP-05) | Baixa | Baixo | Mesmo comportamento de hoje para customer com pedidos (`prisma/migrations/20260519182739_init/migration.sql:110`); fica assim nesta fase (proposta de implementação) | código atual |

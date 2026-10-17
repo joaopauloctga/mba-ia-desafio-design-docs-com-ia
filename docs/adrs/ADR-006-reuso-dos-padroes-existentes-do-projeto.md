@@ -17,7 +17,7 @@ Aceito. Fechado em [09:30] Larissa ("Decisão: reuso máximo do que já existe. 
 - O logger é o Pino, em `src/shared/logger/index.ts`, usado no projeto inteiro ([09:29] Bruno).
 - A autenticação usa `authenticate` e `requireRole` (`src/middlewares/auth.middleware.ts:27-47` e `49-61`). O único uso de `requireRole` hoje é `src/modules/users/user.routes.ts:12-18`.
 - O acesso ao banco passa por `createPrismaClient()` e pelo singleton `prisma` (`src/config/database.ts:4-10`).
-- Todos os models usam id `String @id @default(uuid()) @db.Char(36)` (por exemplo, `prisma/schema.prisma:26` e `prisma/schema.prisma:75`).
+- Todos os models de entidade usam id `String @id @default(uuid()) @db.Char(36)` (por exemplo, `prisma/schema.prisma:26` e `prisma/schema.prisma:75`). A exceção é a tabela técnica de linha única `OrderNumberSequence`, com `id Int @id @default(1)` (`prisma/schema.prisma:133-138`).
 - O ponto de integração é o `changeStatus` (`src/modules/orders/order.service.ts:126-179`). O `OrderService` recebe o repository e o `PrismaClient` no construtor (L26-30) e é montado em `src/app.ts:42-44`.
 
 ## Decisão
@@ -60,7 +60,7 @@ Aceito. Fechado em [09:30] Larissa ("Decisão: reuso máximo do que já existe. 
 
 - **Descrição:** chave numérica sequencial na tabela de outbox ([09:51] Diego perguntou).
 - **Prós:** a chave já sairia em ordem de inserção.
-- **Contras:** destoa de todos os models, que usam UUID `@db.Char(36)` (`prisma/schema.prisma:26`).
+- **Contras:** destoa dos models de entidade, que usam UUID `@db.Char(36)` (`prisma/schema.prisma:26`); o único id inteiro é o da sequência do número de pedido (`prisma/schema.prisma:134`).
 - **Motivo do descarte:** "UUID, segue o padrão do resto do projeto. Tudo é uuid" ([09:51] Larissa).
 
 ### Alternativa 4: stack própria para os webhooks (plausível, não discutida)

@@ -23,19 +23,19 @@ Os clientes B2B passam a ser avisados em menos de 10s ([09:02] Marcos) quando o 
 
 ## 3. Público-alvo e cenários de uso
 
-| Persona | Necessidade | Fonte |
-| --- | --- | --- |
-| Cliente B2B integrador (os três solicitantes) | Saber quando o status dos seus pedidos muda, sem polling | [09:00] Marcos |
-| Usuário do OMS que representa o cliente | Cadastrar e gerenciar os webhooks pela API, com o login atual | [09:32] Marcos |
-| Administrador (perfil ADMIN) | Reprocessar eventos que esgotaram as tentativas | [09:36] Sofia |
+| ID | Persona | Necessidade | Fonte |
+| --- | --- | --- | --- |
+| PER-01 | Cliente B2B integrador (os três solicitantes) | Saber quando o status dos seus pedidos muda, sem polling | [09:00] Marcos |
+| PER-02 | Usuário do OMS que representa o cliente | Cadastrar e gerenciar os webhooks pela API, com o login atual | [09:32] Marcos |
+| PER-03 | Administrador (perfil ADMIN) | Reprocessar eventos que esgotaram as tentativas | [09:36] Sofia |
 
 **Cenários**
 
-1. **Cadastro seletivo.** A Atlas inscreve uma URL HTTPS só em SHIPPED e DELIVERED ([09:33] Marcos) e guarda a secret devolvida no cadastro ([09:31] Marcos).
-2. **Notificação verificada.** Um pedido vira SHIPPED; em menos de 10s a Atlas recebe a notificação, confere a assinatura ([09:20] Sofia) e descarta repetições pelo identificador do evento ([09:25] Diego).
-3. **Manutenção planejada.** O cliente fica 2h fora do ar, como já aconteceu ([09:16] Diego), e recebe o evento numa retentativa quando volta.
-4. **Reprocessamento.** Um ADMIN reprocessa um evento que esgotou as tentativas, e fica registrado quem fez ([09:18] Diego, [09:36] Sofia).
-5. **Secret vazada.** O cliente vaza a secret num log dele, como já ocorreu ([09:22] Diego), pede outra pela API e tem 24h para migrar ([09:21] Sofia).
+1. **CEN-01 Cadastro seletivo.** A Atlas inscreve uma URL HTTPS só em SHIPPED e DELIVERED ([09:33] Marcos) e guarda a secret devolvida no cadastro ([09:31] Marcos).
+2. **CEN-02 Notificação verificada.** Um pedido vira SHIPPED; em menos de 10s a Atlas recebe a notificação, confere a assinatura ([09:20] Sofia) e descarta repetições pelo identificador do evento ([09:25] Diego).
+3. **CEN-03 Manutenção planejada.** O cliente fica 2h fora do ar, como já aconteceu ([09:16] Diego), e recebe o evento numa retentativa quando volta.
+4. **CEN-04 Reprocessamento.** Um ADMIN reprocessa um evento que esgotou as tentativas, e fica registrado quem fez ([09:18] Diego, [09:36] Sofia).
+5. **CEN-05 Secret vazada.** O cliente vaza a secret num log dele, como já ocorreu ([09:22] Diego), pede outra pela API e tem 24h para migrar ([09:21] Sofia).
 
 ## 4. Objetivos e métricas de sucesso
 
@@ -55,7 +55,7 @@ MET-02, MET-06 e MET-07 são propostas deste PRD: a reunião não fixou a meta d
 
 ### Incluso
 
-Notificação assinada de cada mudança de status, configuração pela API, retentativas com DLQ e reprocessamento, e histórico de entregas: RF-01 a RF-15 e RNF-01 a RNF-14. A criação do pedido não notifica, porque o ponto decidido é a mudança de status ([09:40] Bruno) *(interpretação, [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md))*.
+Notificação assinada de cada mudança de status, configuração pela API, retentativas com DLQ e reprocessamento, e histórico de entregas: RF-01 a RF-15 e RNF-01 a RNF-13. A criação do pedido não notifica, porque o ponto decidido é a mudança de status ([09:40] Bruno) *(interpretação, [ADR-007](./adrs/ADR-007-payload-snapshot-enxuto-com-filtro-na-insercao.md))*.
 
 ### Fora de escopo
 
@@ -110,9 +110,8 @@ Prioridade: todos obrigatórios; a reunião não priorizou requisitos.
 | RNF-09 | **Disponibilidade:** a entrega roda fora do processo da API e não para quando a API reinicia | [09:11] Diego |
 | RNF-10 | **Infraestrutura:** nada novo, só o MySQL existente | [09:07] Diego |
 | RNF-11 | **Auditoria:** todo reprocessamento registra quem o pediu | [09:36] Sofia |
-| RNF-12 | **Reservado:** a revisão de segurança é processo, não atributo do sistema; está em DEP-02 | [09:46] Sofia |
-| RNF-13 | **Stack:** a atual, sem logger nem ferramenta nova | [09:29] Bruno, [09:30] Larissa |
-| RNF-14 | **Resiliência:** janela de retentativas de 14h36m, que cobre manutenções de 2h | [09:17] Diego, [09:16] Diego |
+| RNF-12 | **Stack:** a atual, sem logger nem ferramenta nova | [09:29] Bruno, [09:30] Larissa |
+| RNF-13 | **Resiliência:** janela de retentativas de 14h36m, que cobre manutenções de 2h | [09:17] Diego, [09:16] Diego |
 
 ## 8. Decisões e trade-offs principais
 
@@ -131,7 +130,7 @@ Prioridade: todos obrigatórios; a reunião não priorizou requisitos.
 | ID | Dependência | Fonte |
 | --- | --- | --- |
 | DEP-01 | MySQL que o OMS já usa | [09:07] Diego |
-| DEP-02 | Revisão de segurança da Sofia sobre "HMAC e geração de secret", de pelo menos dois dias úteis antes do deploy, dentro das 3 sprints (no lugar do RNF-12) | [09:46] Sofia, [09:47] Larissa, [09:49] Sofia |
+| DEP-02 | Revisão de segurança da Sofia sobre "HMAC e geração de secret", de pelo menos dois dias úteis antes do deploy, dentro das 3 sprints | [09:46] Sofia, [09:47] Larissa, [09:49] Sofia |
 | DEP-03 | Clientes verificando a assinatura e deduplicando pelo `X-Event-Id` | [09:20] Sofia, [09:25] Diego |
 | DEP-04 | Portal do desenvolvedor documentando a integração, com a deduplicação "bem destacado" | [09:26] Marcos, [09:40] Marcos |
 | DEP-05 | Usuários do OMS que representam o cliente, com o login atual | [09:32] Marcos |
@@ -139,7 +138,7 @@ Prioridade: todos obrigatórios; a reunião não priorizou requisitos.
 
 ## 10. Riscos e mitigação
 
-Probabilidade e impacto são avaliação deste PRD, não falas da reunião; quando o risco também está no [FDD](./FDD.md), a avaliação é a mesma.
+Riscos de produto e de cliente. Os de arquitetura (crescimento da outbox, worker parado, ordem dos eventos e fila única) estão no [RFC](./RFC.md), e os de implementação, no [FDD](./FDD.md). Probabilidade e impacto são avaliação deste PRD, não falas da reunião.
 
 | ID | Risco | Prob. | Impacto | Mitigação | Fonte |
 | --- | --- | --- | --- | --- | --- |
@@ -147,11 +146,9 @@ Probabilidade e impacto são avaliação deste PRD, não falas da reunião; quan
 | R-02 | Cliente fora do ar por mais de 14h36m perde a entrega automática | Baixa | Médio | DLQ e reprocessamento por ADMIN; o PM achou "aceitável" | [09:17] Marcos |
 | R-03 | Cliente processa o mesmo evento duas vezes | Média | Médio | Mesmo identificador em toda repetição; deduplicação no portal (DEP-04) | [09:25] Diego, [09:25] Sofia |
 | R-04 | Cliente vaza a secret | Baixa | Alto | Secret por webhook, rotação com 24h e revisão de segurança | [09:22] Diego, [09:21] Sofia |
-| R-05 | Eventos acumulam sem arquivamento e a entrega fica lenta | Média | Médio | Leitura só dos pendentes; arquivamento adiado (OOS-05) | [09:07] Bruno, [09:08] Diego |
-| R-06 | Rajada de mudanças sobrecarrega o cliente | Média | Médio | Medir o volume (MET-07); rate limiting em observação (OOS-03) | [09:38] Diego |
-| R-07 | Eventos do mesmo pedido chegam fora de ordem | Baixa | Baixo | Instância única; os clientes "só querem saber se cada pedido deles mudou" | [09:13] Larissa, [09:14] Marcos |
-| R-08 | Qualquer usuário autenticado gerencia webhooks de qualquer cliente | Média | Médio | Aceito "Por enquanto"; restrição adiada (OOS-09) | [09:32] Bruno, [09:37] Sofia |
-| R-09 | Um endpoint lento atrasa a fila de notificações de todos os clientes, e a meta de 10s pode não valer enquanto isso | Média | Médio | Timeout de 10s por chamada, monitoramento do atraso e, se preciso, paralelizar o envio, o que depende da OQ-02 do [RFC](./RFC.md) | [09:42] Diego, [09:12] Diego |
+| R-05 | Rajada de mudanças sobrecarrega o cliente | Média | Médio | Medir o volume (MET-07); rate limiting em observação (OOS-03) | [09:38] Diego |
+| R-06 | Qualquer usuário autenticado gerencia webhooks de qualquer cliente | Média | Médio | Aceito "Por enquanto"; restrição adiada (OOS-09) | [09:32] Bruno, [09:37] Sofia |
+| R-07 | A meta de 10s pode não valer enquanto um endpoint lento ocupa a fila de notificações | Média | Médio | Acompanhar a latência (MET-01); a causa e a evolução, que depende da OQ-02, estão no [RFC](./RFC.md) | [09:42] Diego, [09:12] Diego |
 
 ## 11. Critérios de aceitação
 
@@ -160,9 +157,9 @@ Comportamento observável pelo cliente ou pelo administrador. A coluna **Cobre**
 | ID | Dado | Quando | Então | Cobre |
 | --- | --- | --- | --- | --- |
 | CA-01 | Usuário autenticado | Cadastra webhook com status de interesse | Com URL HTTPS, o webhook é criado e a resposta traz a secret gerada; com http, recusa com erro de validação | RF-02, RF-14, RNF-06 · CAT-04, CAT-05 |
-| CA-02 | Webhook inscrito em SHIPPED, com os endpoints respondendo dentro do prazo (R-09) | Um pedido vira SHIPPED | A notificação chega em menos de 10s, com `X-Event-Id` e assinatura que confere com a secret | RF-01, RF-08, RF-15, RNF-01 · CAT-01, CAT-06, OBS-01 |
+| CA-02 | Webhook inscrito em SHIPPED, com os endpoints respondendo dentro do prazo (R-07) | Um pedido vira SHIPPED | A notificação chega em menos de 10s, com `X-Event-Id` e assinatura que confere com a secret | RF-01, RF-08, RF-15, RNF-01 · CAT-01, CAT-06, OBS-01 |
 | CA-03 | Webhook inscrito só em SHIPPED e DELIVERED | O pedido vira PAID | Nada é enviado a ele | RF-06 · CAT-03 |
-| CA-04 | Cliente em manutenção de 2h | Ele volta | Uma retentativa entrega o evento; se ficar fora toda a janela de 14h36m, o evento vai para a DLQ | RF-10, RF-11, RNF-14 · CAT-08, CAT-09 |
+| CA-04 | Cliente em manutenção de 2h | Ele volta | Uma retentativa entrega o evento; se ficar fora toda a janela de 14h36m, o evento vai para a DLQ | RF-10, RF-11, RNF-13 · CAT-08, CAT-09 |
 | CA-05 | Evento na DLQ | Um usuário sem perfil ADMIN e depois um ADMIN pedem o reprocessamento | O primeiro é negado; o segundo reentrega com o mesmo `X-Event-Id` *(interpretação, [ADR-005](./adrs/ADR-005-entrega-at-least-once-com-x-event-id.md))* e registra quem pediu | RF-12, RNF-11 · CAT-12 |
 | CA-06 | Webhook com mais de 100 entregas | O cliente consulta o histórico | Vê as 100 mais recentes, com os dados do RF-13 | RF-13 · CAT-14 |
 | CA-07 | Secret recém-rotacionada | O cliente valida as notificações | Antiga e nova funcionam por 24h; depois, só a nova | RF-09 · CAT-13 |
@@ -171,10 +168,10 @@ Comportamento observável pelo cliente ou pelo administrador. A coluna **Cobre**
 
 ## 12. Estratégia de testes e validação
 
-- **Revisão de design:** o design da feature, com Bruno e Diego, antes de codar ([09:50] Larissa).
-- **Testes automatizados:** CA-01 a CA-09, pelos itens do FDD indicados na seção 11, dentro das 3 sprints, que incluem "testes ponta a ponta" ([09:46] Larissa).
-- **Revisão de segurança:** "HMAC e geração de secret", incluindo PC-02 e PC-04 do [RFC](./RFC.md), antes do deploy (DEP-02; [09:46] Sofia).
-- **Validação com os clientes:** Marcos confirma o prazo com a Atlas ([09:47] Marcos), atualiza os clientes ([09:49] Marcos) e documenta a integração no portal ([09:40] Marcos).
-- **Acompanhamento:** MET-01, MET-02 e MET-06 depois da entrega; MET-07 embasa a decisão sobre email e rate limiting (OOS-02, OOS-03; [09:37] Larissa, [09:39] Diego).
+- **TST-01 Revisão de design:** o design da feature, com Bruno e Diego, antes de codar ([09:50] Larissa).
+- **TST-02 Testes automatizados:** CA-01 a CA-09, pelos itens do FDD indicados na seção 11, dentro das 3 sprints, que incluem "testes ponta a ponta" ([09:46] Larissa).
+- **TST-03 Revisão de segurança:** "HMAC e geração de secret", incluindo PC-02 e PC-04 do [RFC](./RFC.md), antes do deploy (DEP-02; [09:46] Sofia).
+- **TST-04 Validação com os clientes:** Marcos confirma o prazo com a Atlas ([09:47] Marcos), atualiza os clientes ([09:49] Marcos) e documenta a integração no portal ([09:40] Marcos).
+- **TST-05 Acompanhamento:** MET-01, MET-02 e MET-06 depois da entrega; MET-07 embasa a decisão sobre email e rate limiting (OOS-02, OOS-03; [09:37] Larissa, [09:39] Diego).
 
 A reunião não combinou piloto, beta nem liberação gradual, e este PRD não os propõe.

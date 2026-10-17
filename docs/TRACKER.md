@@ -6,13 +6,25 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 
 **Legenda: rótulo no documento → ID no tracker, e o tipo**
 
-- **PRD** (`docs/PRD.md`): `MET` → `PRD-MET`, Métrica · `OOS` → `PRD-OOS`, Fora de Escopo · `RF` → `PRD-FR`, Requisito Funcional · `RNF` → `PRD-NFR`, Requisito Não Funcional (o `RNF-12`, reservado, é Restrição) · `DEC` → `PRD-DEC`, Decisão · `DEP` → `PRD-DEP`, Dependência · `R` → `PRD-RISK`, Risco · `CA` → `PRD-AC`, Critério de Aceite.
-- **RFC** (`docs/RFC.md`): `PROP` → `RFC-PROP`, Proposta · `ALT` → `RFC-ALT`, Alternativa Descartada · `OQ` → `RFC-OQ`, Questão em Aberto · `PC` → `RFC-PC`, Ponto para Confirmação · `IMP` → `RFC-IMP`, Impacto · `R` → `RFC-RISK`, Risco.
+- **PRD** (`docs/PRD.md`): `PER` → `PRD-PER`, Persona · `CEN` → `PRD-CEN`, Cenário · `MET` → `PRD-MET`, Métrica · `OOS` → `PRD-OOS`, Fora de Escopo · `RF` → `PRD-FR`, Requisito Funcional · `RNF` → `PRD-NFR`, Requisito Não Funcional · `DEC` → `PRD-DEC`, Decisão · `DEP` → `PRD-DEP`, Dependência · `R` → `PRD-RISK`, Risco · `CA` → `PRD-AC`, Critério de Aceite · `TST` → `PRD-TST`, Estratégia de Teste.
+- **RFC** (`docs/RFC.md`): `PROP` → `RFC-PROP`, Proposta · `ALT` → `RFC-ALT`, Alternativa Descartada · `OQ` → `RFC-OQ`, Questão em Aberto · `PC` → `RFC-PC`, Ponto para Confirmação · `IMP` → `RFC-IMP`, Impacto · `R` → `RFC-RISK`, Risco · `PLAN` → `RFC-PLAN`, Plano de Entrega.
 - **ADRs** (`docs/adrs/ADR-00N-*.md`): `ADR-00N`, Decisão · `ADR-006a` a `ADR-006i` (padrões reaproveitados, tabela do ADR-006), Integração · `ADR-00N-ALT-n` (alternativa n), Alternativa Descartada · `ADR-00N-CONS-1` (trade-off explícito), Trade-off.
-- **FDD** (`docs/FDD.md`): `OT` → `FDD-OT`, Objetivo · `DADOS` → `FDD-DADOS`, Modelo de Dados · `FLUXO` → `FDD-FLUXO`, Fluxo · `CT` → `FDD-CONTRATO`, Contrato · `ERR` → `FDD-ERR`, Erro · `RES` → `FDD-RES`, Resiliência · `OBS` → `FDD-OBS`, Observabilidade · `INT` → `FDD-INT`, Integração · `CAT` → `FDD-CAT`, Critério de Aceite · `R` → `FDD-RISK`, Risco.
+- **FDD** (`docs/FDD.md`): `OT` → `FDD-OT`, Objetivo · `EXC` → `FDD-EXC`, Fora de Escopo · `ARQ` → `FDD-ARQ`, Arquivo Novo · `DADOS` → `FDD-DADOS`, Modelo de Dados · `FLUXO` → `FDD-FLUXO`, Fluxo · `CT` → `FDD-CONTRATO`, Contrato · `ERR` → `FDD-ERR`, Erro · `RES` → `FDD-RES`, Resiliência · `LIM` → `FDD-LIM`, Limitação · `OBS` → `FDD-OBS`, Observabilidade · `INT` → `FDD-INT`, Integração · `COMP` → `FDD-COMP`, Compatibilidade · `IMPL` → `FDD-IMPL`, Implantação · `CAT` → `FDD-CAT`, Critério de Aceite · `R` → `FDD-RISK`, Risco.
 
 | ID | Documento | Tipo | Conteúdo (resumo) | Fonte | Localização |
 | --- | --- | --- | --- | --- | --- |
+| PRD-PER-01 | docs/PRD.md | Persona | Cliente B2B integrador (os três solicitantes): saber quando o status dos pedidos muda, sem polling | TRANSCRICAO | [09:00] Marcos |
+| PRD-PER-02 | docs/PRD.md | Persona | Usuário do OMS que representa o cliente: cadastra e gerencia os webhooks pela API, com o login atual | TRANSCRICAO | [09:32] Marcos |
+| PRD-PER-03 | docs/PRD.md | Persona | Administrador (perfil ADMIN): reprocessa eventos que esgotaram as tentativas | TRANSCRICAO | [09:36] Sofia |
+| PRD-CEN-01 | docs/PRD.md | Cenário | Cadastro seletivo: a Atlas inscreve uma URL HTTPS só em SHIPPED e DELIVERED | TRANSCRICAO | [09:33] Marcos |
+| PRD-CEN-01b | docs/PRD.md | Cenário | Cadastro seletivo: a Atlas guarda a secret devolvida no cadastro | TRANSCRICAO | [09:31] Marcos |
+| PRD-CEN-02 | docs/PRD.md | Cenário | Notificação verificada: o pedido vira SHIPPED e a Atlas confere a assinatura | TRANSCRICAO | [09:20] Sofia |
+| PRD-CEN-02b | docs/PRD.md | Cenário | Notificação verificada: a Atlas descarta repetições pelo identificador do evento | TRANSCRICAO | [09:25] Diego |
+| PRD-CEN-03 | docs/PRD.md | Cenário | Manutenção planejada: o cliente fica 2h fora do ar, como já aconteceu, e recebe o evento numa retentativa | TRANSCRICAO | [09:16] Diego |
+| PRD-CEN-04 | docs/PRD.md | Cenário | Reprocessamento: um ADMIN reprocessa um evento que esgotou as tentativas | TRANSCRICAO | [09:18] Diego |
+| PRD-CEN-04b | docs/PRD.md | Cenário | Reprocessamento: fica registrado quem fez | TRANSCRICAO | [09:36] Sofia |
+| PRD-CEN-05 | docs/PRD.md | Cenário | Secret vazada: o cliente vaza a secret num log dele, como já ocorreu | TRANSCRICAO | [09:22] Diego |
+| PRD-CEN-05b | docs/PRD.md | Cenário | Secret vazada: o cliente pede outra secret pela API e tem 24h para migrar | TRANSCRICAO | [09:21] Sofia |
 | PRD-MET-01 | docs/PRD.md | Métrica | Tempo da mudança de status até a chegada da notificação abaixo de 10s, com até 2s de espera do polling *(interpretação)* | TRANSCRICAO | [09:02] Marcos |
 | PRD-MET-02 | docs/PRD.md | Métrica | 3 de 3 clientes solicitantes integrados (Atlas Comercial, MaxDistribuição e Nova Cargo): meta *(proposta)* deste PRD, não dita na reunião | TRANSCRICAO | [09:00] Marcos |
 | PRD-MET-03 | docs/PRD.md | Métrica | Feature em produção até o fim de novembro, prazo pedido pela Atlas | TRANSCRICAO | [09:45] Marcos |
@@ -59,9 +71,8 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | PRD-NFR-09 | docs/PRD.md | Requisito Não Funcional | Disponibilidade: a entrega roda fora do processo da API e não para quando a API reinicia | TRANSCRICAO | [09:11] Diego |
 | PRD-NFR-10 | docs/PRD.md | Requisito Não Funcional | Infraestrutura: nada novo, só o MySQL existente | TRANSCRICAO | [09:07] Diego |
 | PRD-NFR-11 | docs/PRD.md | Requisito Não Funcional | Auditoria: todo reprocessamento registra quem o pediu | TRANSCRICAO | [09:36] Sofia |
-| PRD-NFR-12 | docs/PRD.md | Restrição | ID reservado: a revisão de segurança antes do deploy é processo, não atributo do sistema, e está em DEP-02 | TRANSCRICAO | [09:46] Sofia |
-| PRD-NFR-13 | docs/PRD.md | Requisito Não Funcional | Stack: a atual, sem logger nem ferramenta nova | TRANSCRICAO | [09:29] Bruno |
-| PRD-NFR-14 | docs/PRD.md | Requisito Não Funcional | Resiliência: janela de retentativas de 14h36m *(interpretação)*, que cobre manutenções de 2h | TRANSCRICAO | [09:17] Diego |
+| PRD-NFR-12 | docs/PRD.md | Requisito Não Funcional | Stack: a atual, sem logger nem ferramenta nova | TRANSCRICAO | [09:29] Bruno |
+| PRD-NFR-13 | docs/PRD.md | Requisito Não Funcional | Resiliência: janela de retentativas de 14h36m *(interpretação)*, que cobre manutenções de 2h | TRANSCRICAO | [09:17] Diego |
 | PRD-DEC-01 | docs/PRD.md | Decisão | Evento registrado no MySQL atual, na mesma transação da mudança de status (ADR-001) | TRANSCRICAO | [09:48] Larissa |
 | PRD-DEC-02 | docs/PRD.md | Decisão | Processo separado da API busca eventos a cada 2s (ADR-002) | TRANSCRICAO | [09:48] Larissa |
 | PRD-DEC-02b | docs/PRD.md | Decisão | Instância única, com ordem garantida só por pedido (ADR-002) | TRANSCRICAO | [09:13] Larissa |
@@ -83,11 +94,9 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | PRD-RISK-02 | docs/PRD.md | Risco | Cliente fora do ar por mais de 14h36m perde a entrega automática; o PM achou "aceitável" (Baixa/Médio) | TRANSCRICAO | [09:17] Marcos |
 | PRD-RISK-03 | docs/PRD.md | Risco | Cliente processa o mesmo evento duas vezes (Média/Médio) | TRANSCRICAO | [09:25] Diego |
 | PRD-RISK-04 | docs/PRD.md | Risco | Cliente vaza a secret, como já aconteceu num log dele (Baixa/Alto) | TRANSCRICAO | [09:22] Diego |
-| PRD-RISK-05 | docs/PRD.md | Risco | Eventos acumulam sem arquivamento e a entrega fica lenta (Média/Médio) | TRANSCRICAO | [09:07] Bruno |
-| PRD-RISK-06 | docs/PRD.md | Risco | Rajada de mudanças de status sobrecarrega o cliente (Média/Médio) | TRANSCRICAO | [09:38] Diego |
-| PRD-RISK-07 | docs/PRD.md | Risco | Eventos do mesmo pedido chegam fora de ordem (Baixa/Baixo) | TRANSCRICAO | [09:13] Larissa |
-| PRD-RISK-08 | docs/PRD.md | Risco | Qualquer usuário autenticado gerencia webhooks de qualquer cliente, aceito "Por enquanto" (Média/Médio) | TRANSCRICAO | [09:37] Sofia |
-| PRD-RISK-09 | docs/PRD.md | Risco | Endpoint lento atrasa a fila de notificações de todos os clientes, e a meta de 10s pode não valer enquanto isso (Média/Médio) | TRANSCRICAO | [09:42] Diego |
+| PRD-RISK-05 | docs/PRD.md | Risco | Rajada de mudanças de status sobrecarrega o cliente (Média/Médio) | TRANSCRICAO | [09:38] Diego |
+| PRD-RISK-06 | docs/PRD.md | Risco | Qualquer usuário autenticado gerencia webhooks de qualquer cliente, aceito "Por enquanto" (Média/Médio) | TRANSCRICAO | [09:37] Sofia |
+| PRD-RISK-07 | docs/PRD.md | Risco | A meta de 10s pode não valer enquanto um endpoint lento ocupa a fila de notificações (Média/Médio) | TRANSCRICAO | [09:42] Diego |
 | PRD-AC-01 | docs/PRD.md | Critério de Aceite | Cadastro válido cria o webhook e a resposta traz a secret gerada pela plataforma | TRANSCRICAO | [09:31] Marcos |
 | PRD-AC-01b | docs/PRD.md | Critério de Aceite | Cadastro com URL http é recusado com erro de validação | TRANSCRICAO | [09:23] Sofia |
 | PRD-AC-02 | docs/PRD.md | Critério de Aceite | Pedido vira status inscrito e, com os endpoints respondendo dentro do prazo, a notificação chega em menos de 10s (identificador e assinatura vêm de PRD-FR-15 e PRD-FR-08) | TRANSCRICAO | [09:02] Marcos |
@@ -98,6 +107,14 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | PRD-AC-07 | docs/PRD.md | Critério de Aceite | Depois da rotação, secret antiga e nova funcionam por 24h; depois, só a nova | TRANSCRICAO | [09:21] Sofia |
 | PRD-AC-08 | docs/PRD.md | Critério de Aceite | Webhook desativado ou removido não é notificado | TRANSCRICAO | [09:33] Bruno |
 | PRD-AC-09 | docs/PRD.md | Critério de Aceite | Cliente lento ou fora do ar não atrasa a mudança de status | TRANSCRICAO | [09:04] Bruno |
+| PRD-TST-01 | docs/PRD.md | Estratégia de Teste | Revisão do design da feature com Bruno e Diego antes de codar | TRANSCRICAO | [09:50] Larissa |
+| PRD-TST-02 | docs/PRD.md | Estratégia de Teste | Testes automatizados de CA-01 a CA-09 dentro das 3 sprints, que incluem "testes ponta a ponta" | TRANSCRICAO | [09:46] Larissa |
+| PRD-TST-03 | docs/PRD.md | Estratégia de Teste | Revisão de segurança de "HMAC e geração de secret" antes do deploy, incluindo PC-02 e PC-04 do RFC | TRANSCRICAO | [09:46] Sofia |
+| PRD-TST-04 | docs/PRD.md | Estratégia de Teste | Validação com os clientes: Marcos confirma o prazo com a Atlas | TRANSCRICAO | [09:47] Marcos |
+| PRD-TST-04b | docs/PRD.md | Estratégia de Teste | Validação com os clientes: Marcos atualiza os clientes depois da reunião | TRANSCRICAO | [09:49] Marcos |
+| PRD-TST-04c | docs/PRD.md | Estratégia de Teste | Validação com os clientes: Marcos documenta a integração no portal | TRANSCRICAO | [09:40] Marcos |
+| PRD-TST-05 | docs/PRD.md | Estratégia de Teste | Acompanhamento de MET-01, MET-02 e MET-06 depois da entrega; MET-07 embasa as decisões adiadas sobre email e rate limiting (OOS-02, OOS-03) | TRANSCRICAO | [09:37] Larissa |
+| PRD-TST-05b | docs/PRD.md | Estratégia de Teste | Acompanhamento do volume por cliente para decidir o rate limiting, em observação (OOS-03) | TRANSCRICAO | [09:39] Diego |
 | RFC-PROP-01 | docs/RFC.md | Proposta | Captura: evento gravado na outbox dentro da transação do `changeStatus`; commit e rollback valem para status e evento | TRANSCRICAO | [09:06] Diego |
 | RFC-PROP-02 | docs/RFC.md | Proposta | Despacho: worker separado da API, com entry-point `src/worker.ts` (novo, a criar), que lê os pendentes a cada 2s | TRANSCRICAO | [09:48] Larissa |
 | RFC-PROP-03 | docs/RFC.md | Proposta | Entrega segura: HMAC-SHA256 do corpo no `X-Signature`, secret por endpoint e rotação com a antiga válida por 24h | TRANSCRICAO | [09:22] Sofia |
@@ -131,12 +148,12 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | RFC-IMP-03 | docs/RFC.md | Impacto | Clientes deduplicam pelo `X-Event-Id` | TRANSCRICAO | [09:25] Diego |
 | RFC-IMP-03b | docs/RFC.md | Impacto | Clientes verificam a assinatura do lado deles | TRANSCRICAO | [09:20] Sofia |
 | RFC-IMP-03c | docs/RFC.md | Impacto | Documentação da integração no portal do desenvolvedor | TRANSCRICAO | [09:26] Marcos |
-| RFC-RISK-01 | docs/RFC.md | Risco | Outbox acumula eventos e o worker fica lento; mitigação: índices, leitura só dos pendentes e OQ-05 | TRANSCRICAO | [09:07] Bruno |
+| RFC-RISK-01 | docs/RFC.md | Risco | Outbox cresce sem política de retenção e o worker fica lento; mitigação: índices, leitura só dos pendentes e OQ-05 | TRANSCRICAO | [09:07] Bruno |
 | RFC-RISK-02 | docs/RFC.md | Risco | Worker parado: eventos acumulam sem entrega, mas o evento gravado não se perde | TRANSCRICAO | [09:06] Diego |
 | RFC-RISK-03 | docs/RFC.md | Risco | Eventos do mesmo pedido fora de ordem, por retry ou por mais de um worker | TRANSCRICAO | [09:12] Diego |
-| RFC-RISK-04 | docs/RFC.md | Risco | Vazamento de secret pelo cliente; mitigação: secret por endpoint e rotação | TRANSCRICAO | [09:22] Diego |
-| RFC-RISK-05 | docs/RFC.md | Risco | Cliente fora do ar por mais de 14h36m perde a entrega automática; DLQ e replay manual, aceito pelo PM | TRANSCRICAO | [09:17] Marcos |
-| RFC-RISK-06 | docs/RFC.md | Risco | Atraso faz a Atlas migrar para o concorrente; mitigação: 3 sprints e prazo confirmado com a Atlas | TRANSCRICAO | [09:00] Marcos |
+| RFC-RISK-04 | docs/RFC.md | Risco | Fila única: um endpoint lento atrasa os envios de todos os clientes; mitigação: timeout de 10s e paralelismo dependente da OQ-02 | TRANSCRICAO | [09:12] Diego |
+| RFC-PLAN-01 | docs/RFC.md | Plano de Entrega | Outbox e DLQ (uma sprint), worker e retry (uma), CRUD e histórico (meia), integração e testes (meia), HMAC e validações: 3 sprints | TRANSCRICAO | [09:46] Larissa |
+| RFC-PLAN-01b | docs/RFC.md | Plano de Entrega | Revisão de segurança de pelo menos dois dias úteis antes do deploy, no fim das 3 sprints | TRANSCRICAO | [09:46] Sofia |
 | ADR-001 | docs/adrs/ADR-001-outbox-transacional-no-mysql.md | Decisão | Padrão outbox no MySQL existente, com o evento inserido na mesma transação da mudança de status, atômica com ela | TRANSCRICAO | [09:48] Larissa |
 | ADR-001-ALT-1 | docs/adrs/ADR-001-outbox-transacional-no-mysql.md | Alternativa Descartada | Disparo HTTP síncrono no `changeStatus`: "qualquer cliente lento vai travar mudança de status pra outros pedidos" | TRANSCRICAO | [09:04] Bruno |
 | ADR-001-ALT-2 | docs/adrs/ADR-001-outbox-transacional-no-mysql.md | Alternativa Descartada | Redis Streams ou outra fila externa: mais infraestrutura, "overengineering" para um time pequeno | TRANSCRICAO | [09:07] Diego |
@@ -192,6 +209,22 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-OT-07 | docs/FDD.md | Objetivo | 100% das entregas assinadas com HMAC-SHA256 | TRANSCRICAO | [09:22] Sofia |
 | FDD-OT-07b | docs/FDD.md | Objetivo | 100% das URLs em `https` | TRANSCRICAO | [09:23] Sofia |
 | FDD-OT-08 | docs/FDD.md | Objetivo | Sem stack nova: 0 dependências npm e 0 serviços de infraestrutura novos | TRANSCRICAO | [09:29] Bruno |
+| FDD-EXC-01 | docs/FDD.md | Fora de Escopo | Evento na criação do pedido não é emitido: o ponto de integração decidido é a mudança de status *(interpretação)* | TRANSCRICAO | [09:40] Bruno |
+| FDD-EXC-01b | docs/FDD.md | Fora de Escopo | A criação do pedido grava o histórico inicial `null → PENDING` por outro caminho (L106-113) | CODIGO | src/modules/orders/order.service.ts |
+| FDD-EXC-02 | docs/FDD.md | Fora de Escopo | Endpoint para listar a DLQ: não previsto; o replay recebe o id da DLQ (PC-05 do RFC) | TRANSCRICAO | [09:18] Diego |
+| FDD-EXC-03 | docs/FDD.md | Fora de Escopo | Biblioteca de métricas ou tracing: "Não vamos botar nada novo" | TRANSCRICAO | [09:29] Bruno |
+| FDD-ARQ-01 | docs/FDD.md | Arquivo Novo | `src/worker.ts` (novo, a criar): entry-point do worker, com o loop e a parada controlada | TRANSCRICAO | [09:11] Larissa |
+| FDD-ARQ-02 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.routes.ts` (novo, a criar): routers do CRUD e do admin | TRANSCRICAO | [09:27] Bruno |
+| FDD-ARQ-03 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.controller.ts` (novo, a criar): handlers com `next(err)` | TRANSCRICAO | [09:27] Bruno |
+| FDD-ARQ-04 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.service.ts` (novo, a criar): CRUD, checagem de `https`, secret, rotação e replay | TRANSCRICAO | [09:27] Bruno |
+| FDD-ARQ-05 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.repository.ts` (novo, a criar): acesso às tabelas novas pela API | TRANSCRICAO | [09:27] Bruno |
+| FDD-ARQ-06 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.schemas.ts` (novo, a criar): schemas Zod do módulo | TRANSCRICAO | [09:27] Bruno |
+| FDD-ARQ-07 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.worker.ts` (novo, a criar): polling, envio, retry, DLQ e recuperação | TRANSCRICAO | [09:28] Bruno |
+| FDD-ARQ-08 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.publisher.ts` (novo, a criar): `publishWebhookEvent`; o nome do arquivo é *(proposta)* | TRANSCRICAO | [09:41] Bruno |
+| FDD-ARQ-09 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.signer.ts` (novo, a criar): secret e `X-Signature`, em arquivo separado por *(proposta)* de organização | TRANSCRICAO | [09:22] Sofia |
+| FDD-ARQ-10 | docs/FDD.md | Arquivo Novo | `src/modules/webhooks/webhook.errors.ts` (novo, a criar): classes de erro e códigos de entrega, em arquivo separado por *(proposta)* de organização | TRANSCRICAO | [09:28] Bruno |
+| FDD-ARQ-11 | docs/FDD.md | Arquivo Novo | Migration aditiva nova (novo, a criar), com as tabelas da feature, a começar pela outbox | TRANSCRICAO | [09:06] Diego |
+| FDD-ARQ-12 | docs/FDD.md | Arquivo Novo | `tests/webhooks.test.ts` (novo, a criar): testes da seção 13, que incluem os "testes ponta a ponta" | TRANSCRICAO | [09:46] Larissa |
 | FDD-DADOS-01 | docs/FDD.md | Modelo de Dados | Enum `WebhookOutboxStatus` com PENDING, PROCESSING, DELIVERED e FAILED (pendente, processando, entregue, falhou) | TRANSCRICAO | [09:08] Diego |
 | FDD-DADOS-02 | docs/FDD.md | Modelo de Dados | `webhook_endpoints`: url, secret, secret anterior e validade, events, active, deletedAt e FK para customer | TRANSCRICAO | [09:21] Bruno |
 | FDD-DADOS-03 | docs/FDD.md | Modelo de Dados | `webhook_outbox`: uma linha por evento e endpoint, `eventId` compartilhado, payload snapshot, attempts, nextAttemptAt e índice (status, createdAt) | TRANSCRICAO | [09:06] Diego |
@@ -216,11 +249,12 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-CONTRATO-08 | docs/FDD.md | Contrato | Saída: `POST` para a URL do cliente com o payload em snake_case (`event_id`, `event_type`, `order_id`, `from_status`, `to_status`, `total_cents`...) | TRANSCRICAO | [09:43] Diego |
 | FDD-CONTRATO-08b | docs/FDD.md | Contrato | Headers da saída: `Content-Type`, `X-Event-Id`, `X-Timestamp` (para o cliente detectar replay) e `X-Signature` | TRANSCRICAO | [09:44] Diego |
 | FDD-CONTRATO-08c | docs/FDD.md | Contrato | Header `X-Webhook-Id`, para o cliente com vários cadastros saber qual recebeu o envio | TRANSCRICAO | [09:44] Sofia |
+| FDD-CONTRATO-08d | docs/FDD.md | Contrato | Resposta do cliente: 2xx em até 10s confirma; 3xx, 4xx, 5xx, timeout e erro de rede são falha com retry (só 2xx como sucesso é *(proposta)*) | TRANSCRICAO | [09:42] Diego |
 | FDD-ERR-01 | docs/FDD.md | Erro | `WEBHOOK_NOT_FOUND` (404), subclasse de `AppError`, não de `NotFoundError` | TRANSCRICAO | [09:28] Bruno |
 | FDD-ERR-01b | docs/FDD.md | Erro | `NotFoundError` fixa o código `NOT_FOUND` (L27-31), por isso `WEBHOOK_NOT_FOUND` estende `AppError` | CODIGO | src/shared/errors/http-errors.ts |
-| FDD-ERR-02 | docs/FDD.md | Erro | `WEBHOOK_INVALID_URL` (400), estende `BadRequestError`: o Zod valida o formato e o service recusa o que não é `https` | TRANSCRICAO | [09:28] Bruno |
-| FDD-ERR-04 | docs/FDD.md | Erro | `WEBHOOK_DEAD_LETTER_NOT_FOUND` (404, nome *(proposta)*): id da DLQ inexistente no replay | TRANSCRICAO | [09:18] Diego |
-| FDD-ERR-05 | docs/FDD.md | Erro | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` (409, estende `ConflictError`): linha já reprocessada, um replay por linha *(proposta)* | TRANSCRICAO | [09:36] Sofia |
+| FDD-ERR-02 | docs/FDD.md | Erro | `WEBHOOK_INVALID_URL` (400), estende `BadRequestError`: o Zod valida o formato e o service recusa o que não é `https` *(proposta)* | TRANSCRICAO | [09:28] Bruno |
+| FDD-ERR-03 | docs/FDD.md | Erro | `WEBHOOK_DEAD_LETTER_NOT_FOUND` (404, nome *(proposta)*): id da DLQ inexistente no replay | TRANSCRICAO | [09:18] Diego |
+| FDD-ERR-04 | docs/FDD.md | Erro | `WEBHOOK_DEAD_LETTER_ALREADY_REPLAYED` (409, estende `ConflictError`): linha já reprocessada, um replay por linha *(proposta)* | TRANSCRICAO | [09:36] Sofia |
 | FDD-ERR-10 | docs/FDD.md | Erro | `WEBHOOK_DELIVERY_TIMEOUT`: sem resposta em 10s, com retry | TRANSCRICAO | [09:42] Diego |
 | FDD-ERR-11 | docs/FDD.md | Erro | `WEBHOOK_DELIVERY_HTTP_ERROR`: resposta fora de 2xx, com retry (só 2xx como sucesso é *(proposta)*) | TRANSCRICAO | [09:15] Diego |
 | FDD-ERR-12 | docs/FDD.md | Erro | `WEBHOOK_DELIVERY_NETWORK_ERROR`: DNS, conexão recusada ou TLS, com retry ("Se o cliente tá offline") | TRANSCRICAO | [09:14] Larissa |
@@ -243,6 +277,10 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-RES-12 | docs/FDD.md | Resiliência | Entrega, estado da outbox e linha da DLQ na mesma transação *(proposta)*, no padrão do `$transaction` (L131) | CODIGO | src/modules/orders/order.service.ts |
 | FDD-RES-13 | docs/FDD.md | Resiliência | Sem seguir redirect, e um 3xx conta como falha *(proposta)*, derivado da regra de só `https` | TRANSCRICAO | [09:23] Sofia |
 | FDD-RES-14 | docs/FDD.md | Resiliência | Limite de 64KB medido no worker; acima, DLQ sem retry e sem afetar o status *(interpretação)* | TRANSCRICAO | [09:24] Larissa |
+| FDD-LIM-01 | docs/FDD.md | Limitação | Ordem: "Não é garantia de ordering global, só por order_id e enquanto for single-worker"; sob retry, um evento pode ser ultrapassado *(interpretação)* | TRANSCRICAO | [09:13] Larissa |
+| FDD-LIM-02 | docs/FDD.md | Limitação | Fila única: um endpoint lento ocupa até 10s por envio e atrasa o resto do lote; a meta de 10s deixa de valer enquanto isso *(interpretação)* | TRANSCRICAO | [09:42] Diego |
+| FDD-LIM-03 | docs/FDD.md | Limitação | Rajadas: sem rate limiting, "50 pedidos mudando de status em um minuto" viram 50 chamadas; em observação (OQ-01 do RFC) | TRANSCRICAO | [09:38] Diego |
+| FDD-LIM-04 | docs/FDD.md | Limitação | Duplicatas: queda do worker entre o 2xx e o `DELIVERED`, ou resposta depois dos 10s, repetem o envio | TRANSCRICAO | [09:24] Diego |
 | FDD-OBS-01 | docs/FDD.md | Observabilidade | Métrica de latência do evento até o fim da 1ª tentativa, com meta abaixo de 10s | TRANSCRICAO | [09:02] Marcos |
 | FDD-OBS-02 | docs/FDD.md | Observabilidade | Métrica de backlog, os pendentes com `nextAttemptAt` vencido, com alerta *(proposta)* | TRANSCRICAO | [09:07] Bruno |
 | FDD-OBS-03 | docs/FDD.md | Observabilidade | Métrica de idade do pendente vencido mais antigo, alerta acima de 60s *(proposta)*: o evento não pode ficar pendurado | TRANSCRICAO | [09:02] Marcos |
@@ -283,6 +321,17 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-INT-17 | docs/FDD.md | Integração | Mesmo MySQL 8.0 (`image: mysql:8.0`, L3), nenhum serviço novo | CODIGO | docker-compose.yml |
 | FDD-INT-17b | docs/FDD.md | Integração | "Outbox no MySQL existente resolve", sem subir infraestrutura | TRANSCRICAO | [09:07] Diego |
 | FDD-INT-18 | docs/FDD.md | Integração | O worker lê a mesma `DATABASE_URL` (L5) | CODIGO | .env.example |
+| FDD-COMP-01 | docs/FDD.md | Compatibilidade | Contratos de `/orders` inalterados: o `PATCH /orders/:id/status` (L19-23) devolve o mesmo corpo | CODIGO | src/modules/orders/order.routes.ts |
+| FDD-COMP-02 | docs/FDD.md | Compatibilidade | Latência do `PATCH` de status: mais 1 leitura dos endpoints em toda mudança e 1 inserção em lote quando há inscritos | TRANSCRICAO | [09:34] Bruno |
+| FDD-COMP-03 | docs/FDD.md | Compatibilidade | Novo modo de falha do `PATCH` de status: se a inserção na outbox falhar, a mudança falha junto (500) | TRANSCRICAO | [09:40] Bruno |
+| FDD-COMP-04 | docs/FDD.md | Compatibilidade | `DELETE /orders/:id` (`delete`, L181-192) não é afetado, porque o `orderId` da outbox não tem FK *(proposta)* | CODIGO | src/modules/orders/order.service.ts |
+| FDD-COMP-05 | docs/FDD.md | Compatibilidade | Customer com webhooks não pode ser apagado: a FK `RESTRICT`, como a de pedidos (L110), gera `P2003`, que vira 500 | CODIGO | prisma/migrations/20260519182739_init/migration.sql |
+| FDD-COMP-05b | docs/FDD.md | Compatibilidade | O `errorMiddleware` não trata `P2003`: só `P2002` e `P2025` (L37-54) | CODIGO | src/middlewares/error.middleware.ts |
+| FDD-IMPL-01 | docs/FDD.md | Implantação | Aplicar a migration nova (ARQ-11) antes de subir a API e o worker, com a outbox no MySQL existente | TRANSCRICAO | [09:08] Larissa |
+| FDD-IMPL-02 | docs/FDD.md | Implantação | Subir a API; até o worker subir, os eventos ficam `PENDING`, sem perda | TRANSCRICAO | [09:06] Diego |
+| FDD-IMPL-03 | docs/FDD.md | Implantação | Subir o worker em uma única instância: duas quebrariam a ordem por pedido | TRANSCRICAO | [09:12] Diego |
+| FDD-IMPL-03b | docs/FDD.md | Implantação | O worker sobe com o script "npm run worker" | TRANSCRICAO | [09:11] Larissa |
+| FDD-IMPL-04 | docs/FDD.md | Implantação | Reverter parando o worker e voltando a API; os pendentes saem quando o worker voltar *(proposta)* | TRANSCRICAO | [09:11] Diego |
 | FDD-CAT-01 | docs/FDD.md | Critério de Aceite | Com 2 endpoints inscritos, o `PATCH` de status gera 2 linhas `PENDING` com o mesmo `eventId` e o payload de 9 campos | TRANSCRICAO | [09:06] Diego |
 | FDD-CAT-02 | docs/FDD.md | Critério de Aceite | Com `publishWebhookEvent` forçado a falhar: 500 e rollback de pedido, histórico, estoque e outbox | TRANSCRICAO | [09:40] Bruno |
 | FDD-CAT-03 | docs/FDD.md | Critério de Aceite | Status não inscrito, endpoint inativo ou removido e criação de pedido não geram linha na outbox | TRANSCRICAO | [09:34] Bruno |
@@ -300,26 +349,19 @@ Liga cada item rotulado do [PRD](./PRD.md), do [RFC](./RFC.md), dos [ADRs](./adr
 | FDD-CAT-15 | docs/FDD.md | Critério de Aceite | Linhas `PROCESSING` de execução interrompida voltam a `PENDING` e saem com o mesmo `eventId` *(proposta)* | TRANSCRICAO | [09:24] Diego |
 | FDD-CAT-16 | docs/FDD.md | Critério de Aceite | A suíte atual passa sem alteração (inclusive o teste de `PATCH /status`, L59-87); só `tests/setup.ts` muda | CODIGO | tests/orders.test.ts |
 | FDD-CAT-17 | docs/FDD.md | Critério de Aceite | `DELETE` devolve 204 e o webhook some da lista; `PATCH`, `DELETE` e rotação depois dão 404 | TRANSCRICAO | [09:33] Bruno |
-| FDD-RISK-01 | docs/FDD.md | Risco | A outbox cresce sem arquivamento e a leitura fica lenta (Média/Médio) | TRANSCRICAO | [09:07] Bruno |
-| FDD-RISK-02 | docs/FDD.md | Risco | Worker parado: eventos se acumulam sem entrega, mas sem perda (Média/Alto) | TRANSCRICAO | [09:06] Diego |
-| FDD-RISK-03 | docs/FDD.md | Risco | Endpoint lento ocupa a fila única até 10s por envio e atrasa os outros clientes (Média/Médio) | TRANSCRICAO | [09:42] Diego |
-| FDD-RISK-04 | docs/FDD.md | Risco | Cliente processa o mesmo evento mais de uma vez (Média/Médio) | TRANSCRICAO | [09:25] Diego |
-| FDD-RISK-05 | docs/FDD.md | Risco | Eventos do mesmo pedido fora de ordem sob retry (Baixa/Baixo) | TRANSCRICAO | [09:13] Larissa |
-| FDD-RISK-06 | docs/FDD.md | Risco | Vazamento de secret (Baixa/Alto) | TRANSCRICAO | [09:22] Diego |
-| FDD-RISK-07 | docs/FDD.md | Risco | Falha na inserção da outbox derruba a mudança de status, por decisão (Baixa/Alto) | TRANSCRICAO | [09:40] Bruno |
-| FDD-RISK-08 | docs/FDD.md | Risco | Qualquer usuário autenticado gerencia webhooks de qualquer customer, aceito "Por enquanto sim" (Média/Médio) | TRANSCRICAO | [09:37] Sofia |
-| FDD-RISK-08b | docs/FDD.md | Risco | `User` não tem vínculo com `Customer` (model `User`, L25-38) | CODIGO | prisma/schema.prisma |
-| FDD-RISK-09 | docs/FDD.md | Risco | Rajada de mudanças de status sobrecarrega o cliente (Média/Médio) | TRANSCRICAO | [09:38] Diego |
-| FDD-RISK-10 | docs/FDD.md | Risco | URL `https` apontando para endereço interno da rede do OMS (Baixa/Alto) *(interpretação: risco não discutido; só a regra do `https` foi decidida)* | TRANSCRICAO | [09:23] Sofia |
-| FDD-RISK-11 | docs/FDD.md | Risco | Cliente fora do ar por mais de 14h36m perde a entrega automática (Baixa/Médio) | TRANSCRICAO | [09:17] Marcos |
-| FDD-RISK-12 | docs/FDD.md | Risco | Duas instâncias do worker por engano quebram a ordem e podem enviar a mesma linha duas vezes (Baixa/Médio) | TRANSCRICAO | [09:12] Diego |
+| FDD-RISK-01 | docs/FDD.md | Risco | Falha na inserção da outbox derruba a mudança de status, por decisão (Baixa/Alto) | TRANSCRICAO | [09:40] Bruno |
+| FDD-RISK-02 | docs/FDD.md | Risco | Duas instâncias do worker por engano quebram a ordem e podem enviar a mesma linha duas vezes (Baixa/Médio) | TRANSCRICAO | [09:12] Diego |
+| FDD-RISK-03 | docs/FDD.md | Risco | URL `https` apontando para endereço interno da rede do OMS (Baixa/Alto) *(interpretação: risco não discutido; só a regra do `https` foi decidida)* | TRANSCRICAO | [09:23] Sofia |
+| FDD-RISK-04 | docs/FDD.md | Risco | Secret exposta pelo próprio OMS, em log, resposta da API ou banco (Baixa/Alto); a forma de guardar fica para a revisão de segurança | TRANSCRICAO | [09:46] Sofia |
+| FDD-RISK-04b | docs/FDD.md | Risco | Hoje o `redactPaths` (L4-11) não cobre secret | CODIGO | src/shared/logger/index.ts |
+| FDD-RISK-05 | docs/FDD.md | Risco | Customer com webhooks deixa de poder ser removido, porque o `P2003` vira 500 (Baixa/Baixo) | CODIGO | prisma/migrations/20260519182739_init/migration.sql |
 
 ## Resumo de cobertura
 
 Números gerados pelo script de validação do tracker (Python, só biblioteca padrão), que também confere cada fala na transcrição e cada caminho no repositório.
 
-- **Linhas:** 300 (PRD 85, RFC 39, ADRs 46, FDD 130), das quais 37 são uma origem a mais de um item (sufixo de letra, como `FDD-INT-01b`).
-- **`TRANSCRICAO`:** 260 linhas (86,7%), apontando para 66 falas distintas; toda `Localização` existe na transcrição como `[hh:mm] Nome`.
-- **`CODIGO`:** 40 linhas, apontando para 22 arquivos distintos; todos existem no repositório e nenhum é arquivo novo da feature.
-- **Cobertura dos itens rotulados:** PRD 76/76 · RFC 30/30 · ADRs 45/45 · FDD 112/112; total 263/263 (100,0%).
+- **Linhas:** 342 (PRD 102, RFC 39, ADRs 46, FDD 155), das quais 49 são uma origem a mais de um item (sufixo de letra, como `FDD-INT-01b`).
+- **`TRANSCRICAO`:** 296 linhas (86,5%), apontando para 73 falas distintas; toda `Localização` existe na transcrição como `[hh:mm] Nome`.
+- **`CODIGO`:** 46 linhas, apontando para 22 arquivos distintos; todos existem no repositório e nenhum é arquivo novo da feature.
+- **Cobertura dos itens rotulados:** PRD 86/86 · RFC 29/29 · ADRs 45/45 · FDD 133/133; total 293/293 (100,0%).
 - **Rótulos sem linha no tracker:** 0. **Linhas sem rótulo no documento:** 0.

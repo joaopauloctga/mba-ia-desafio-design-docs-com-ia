@@ -6,7 +6,7 @@
 
 ## Status
 
-Aceito. Decisão secundária, que o enunciado permite registrar como ADR adicional. O snapshot foi fechado em [09:52] Bruno ("Beleza, snapshot. Decidido."), depois de [09:52] Larissa e [09:52] Diego. O filtro na inserção foi aceito em [09:34] Diego ("Concordo") e o formato enxuto, em [09:44] Bruno ("Bom, mantém payload enxuto").
+Aceito. Decisão secundária, registrada como ADR porque afeta a outbox e o contrato com o cliente. O snapshot foi fechado em [09:52] Bruno ("Beleza, snapshot. Decidido."), depois de [09:52] Larissa e [09:52] Diego. O filtro na inserção foi aceito em [09:34] Diego ("Concordo") e o formato enxuto, em [09:44] Bruno ("Bom, mantém payload enxuto").
 
 ## Contexto
 

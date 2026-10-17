@@ -29,10 +29,13 @@ A regra central é não inventar: cada requisito, decisão ou restrição precis
 | 2. ADRs | 7 ADRs e o índice | ✅ |
 | 3. RFC | Proposta com alternativas descartadas, questões em aberto e links para os ADRs | ✅ |
 | 4. FDD | 8 contratos, 11 códigos `WEBHOOK_*`, 18 pontos de integração com o código | ✅ |
-| 5. PRD | 15 requisitos funcionais, 14 não funcionais, 9 itens fora de escopo | ✅ |
-| 6. Tracker | 299 linhas, 262 de 262 itens cobertos | ✅ |
+| 5. PRD | 15 requisitos funcionais, 13 não funcionais, 9 itens fora de escopo | ✅ |
+| 6. Tracker | 342 linhas, 293 de 293 itens cobertos | ✅ |
 | 7. Consolidação deste README | Narrativa revisada contra o diário de bordo | ✅ |
-| 8. Revisão final e entrega | Revisão independente (nenhum achado alto, 5 médios e 7 baixos; 11 aceitos), checklist do enunciado com 32 de 32 itens e correções aplicadas | ✅ |
+| 8. Revisão final e entrega | Revisão independente (nenhum achado alto, 5 médios e 7 baixos; 11 aceitos), checklist do enunciado com 32 de 32 itens, correções aplicadas e push para o GitHub | ✅ |
+| 9. Revisão de conformidade (fora do plano) | Depois do push, revisão do pacote contra o enunciado: 17 achados (1 bloqueante, 1 alto, 5 médios e 10 baixos), 15 resolvidos, 1 deixado para discussão (formato do curso) e 1 mantido como estava (plano fora do git) | ✅ |
+
+Os números das fases 5 e 6 são os finais, já com as correções da fase 9.
 
 **Interação com a IA.** Toda fase seguiu o mesmo arranjo: eu dava o comando na sessão principal (por exemplo, "pode começar a fase 4, lança o agente separado"), ela lançava um subagente com as instruções da fase, e o subagente executava, rodava o validador e devolvia um relatório. Antes do commit, a sessão principal conferia o resultado de forma independente, com script próprio, releitura e falas checadas na transcrição, e corrigia o que estava fora do escopo do subagente, como a citação do ADR-001 apontada na fase 3 (iteração 9).
 
@@ -50,10 +53,11 @@ A regra central é não inventar: cada requisito, decisão ou restrição precis
 - **Tamanho.** Depois de ler o FDD commitado, pedi para enxugar (iteração 12). O PRD já foi escrito com uma referência de tamanho por causa disso.
 - **Combinados do início.** Branch própria; plano local, sem commit; `ENUNCIADO.md` versionado; sem templates do curso (os documentos seguem as seções mínimas do enunciado e o formato MADR); e este README atualizado ao fim de cada fase, para registrar prompts e iterações quando aconteciam.
 - **Push** só com a minha aprovação, na fase 8.
+- **Revisão de conformidade.** Depois do push, pedi uma revisão do pacote contra o enunciado (prompt 10) e escolhi o que corrigir: tudo, menos o formato dos documentos do curso, que fica para uma discussão à parte. O plano continua fora do git, como combinado no início.
 
 ## Prompts customizados
 
-Os dois primeiros são comandos que digitei, copiados como estão. Os outros seis são as instruções de geração que o subagente de cada fase recebeu: partem do prompt sugerido no plano daquela fase, com as restrições acrescentadas antes de executar, e estão na versão efetivamente usada. Os caminhos `plano/...` que aparecem neles são da pasta local do plano, que não é versionada.
+Quatro são comandos que eu digitei, copiados como estão: o 1 e o 2 definiram o processo, e o 9 e o 10 pediram revisão e correção do que já estava pronto. Os prompts 3 a 8 não foram digitados por mim: são as instruções de geração que a sessão principal escreveu para o subagente de cada fase, a partir do prompt sugerido no plano daquela fase, e estão na versão efetivamente usada. Nelas, o meu papel foi pedir o plano, disparar cada fase e decidir os pontos ambíguos (ver "Checkpoints humanos"). Os caminhos `plano/...` que aparecem nelas são da pasta local do plano, que não é versionada.
 
 ### 1. Planejamento em fases
 
@@ -220,6 +224,26 @@ garanta uma linha no formato | ID | Documento | Tipo | Conteúdo (resumo) | Font
 Grave um documento por vez. No fim, rode o validador e sorteie 25 linhas para conferir a semântica.
 ```
 
+### 9. Enxugamento do FDD
+
+Comando meu, digitado depois de ler o FDD commitado. Levou ao corte de 1.523 para 951 linhas (iteração 12).
+
+```text
+pode exugar isso ai, tem muito exemplo de código, talvez diminua um pouco os exemplos de código ou deixe mais enxuto
+```
+
+### 10. Revisão de conformidade com o enunciado
+
+Comandos meus, depois do push. O primeiro pediu a revisão do pacote inteiro contra o enunciado; o segundo, digitado depois de ler o relatório, definiu o que entrava (iteração 19).
+
+```text
+preciso q vc avalie o @ENUNCIADO.md e veja se estamos cumprindo tudo q é necessario para esse trabalho e faca um report doq esta errado/faltand/precisa alterar e salve na raiz do projeto.
+```
+
+```text
+ja fiz o push pra origin, pode fazer todos os fix q vc entregou. exceto a parte do formato apresentado no curso, depois vamos discutir isso melhor.
+```
+
 ## Iterações e ajustes
 
 | # | Fase / documento | O que a IA gerou | Problema | Ajuste |
@@ -241,9 +265,10 @@ Grave um documento por vez. No fim, rode o validador e sorteie 25 linhas para co
 | 15 | Fase 6 / tracker (consolidação) | Linhas do rascunho, alimentado desde a fase 2 | Resumos que juntavam falas diferentes com uma só origem. Pior caso: a linha do cadastro, com "cliente vem na requisição, não do login", apontava para [09:31] Marcos, que disse o contrário ("Customer_id implícito do JWT"); quem corrigiu foi [09:32] Larissa. Tipos sem vocabulário fixo. O validador acusava `tests/orders.test.ts`, que o FDD cita como molde, como arquivo novo | Uma origem por linha, com sufixo (`PRD-FR-02b` aponta para [09:32] Larissa). Vocabulário de 23 tipos com legenda no topo. Script corrigido e testado por mutação (32 de 32) |
 | 16 | Fase 6 / tracker (sentido) | Tracker sem falhas no validador: 287 linhas, 100% dos itens cobertos | O script confere se a fala existe, não se ela sustenta o item. Numa amostra de 30 linhas (semente 20261016), 2 decisões apontavam para [09:10] Larissa, que só diz "Worker em polling, 2s". Uma segunda amostra, de 25 linhas (semente 16102026), achou mais 2 do mesmo tipo | Varredura da classe inteira, e não só das linhas sorteadas: decisões compostas passaram para o resumo de [09:48] Larissa, ficaram só com o que a fala de fechamento diz ou ganharam linha com sufixo. Uma varredura por conceito (10s, 24h, ADMIN, JWT etc.) sinalizou 38 linhas: 13 corrigidas, 25 já sustentadas ou marcadas. Fechou com 86,6% das linhas em `TRANSCRICAO` e as 40 linhas `CODIGO` conferidas contra o código |
 | 17 | Fase 7 / este README | O README escrito aos poucos, ao fim de cada fase | Na consolidação, três trechos entre aspas desta tabela não batiam com o texto registrado no diário de bordo: "criava o Prisma client" (o texto era "cria"), "só quatro arquivos mudam" (faltava "existentes") e a frase do `customerId` sem o "não do JWT". O relato do travamento da fase 1 trazia um detalhe sem registro | Conferi cada trecho entre aspas do README contra a transcrição e o diário, e cada prompt contra a versão registrada. Troquei os trechos pela forma literal e removi o detalhe sem registro |
-| 18 | Fase 8 / revisão independente | O pacote completo, sem falha nos 9 validadores e com 32 de 32 itens do checklist do enunciado | Um revisor sem contexto achou 12 problemas (nenhum alto, 5 médios, 7 baixos). Os principais: o descarte de assinar o `X-Timestamp` (ADR-004) apoiado numa fala anterior ao header, que só surgiu em [09:44] Diego; a meta de menos de 10s sem ressalva no PRD e no RFC, quando o próprio FDD admite que um endpoint lento atrasa a fila de todos; o evento de endpoint inativo encerrado sem DLQ, o que contradizia "todo evento termina entregue ou na DLQ" do ADR-003 e deixava sem recuperação um replay feito com o endpoint inativo; e citações além da fala, como "até com a mesma URL" atribuído à Sofia e a meta "3 de 3" sem marca de proposta | 11 achados aceitos. Timestamp fora do HMAC marcado como interpretação e levado ao PC-02 do RFC; risco R-09 novo no PRD, com o critério de 10s condicionado (o tracker passou a 300 linhas); endpoint inativo passa a ir para a DLQ sem retry, coerente em fluxos, matriz de erros, logs, critérios e tracker; citações reduzidas ao que foi dito e propostas marcadas; ajustes menores de números de linha, texto e coerência. Recusado: a repetição de riscos entre PRD, RFC e FDD, porque o enunciado exige a seção nos três e os IDs locais se resolvem no tracker |
+| 18 | Fase 8 / revisão independente | O pacote completo, sem falha nos 9 validadores e com 32 de 32 itens do checklist do enunciado | Um revisor sem contexto achou 12 problemas (nenhum alto, 5 médios, 7 baixos). Os principais: o descarte de assinar o `X-Timestamp` (ADR-004) apoiado numa fala anterior ao header, que só surgiu em [09:44] Diego; a meta de menos de 10s sem ressalva no PRD e no RFC, quando o próprio FDD admite que um endpoint lento atrasa a fila de todos; o evento de endpoint inativo encerrado sem DLQ, o que contradizia "todo evento termina entregue ou na DLQ" do ADR-003 e deixava sem recuperação um replay feito com o endpoint inativo; e citações além da fala, como "até com a mesma URL" atribuído à Sofia e a meta "3 de 3" sem marca de proposta | 11 achados aceitos. Timestamp fora do HMAC marcado como interpretação e levado ao PC-02 do RFC; risco R-09 novo no PRD (hoje R-07), com o critério de 10s condicionado (o tracker passou a 300 linhas); endpoint inativo passa a ir para a DLQ sem retry, coerente em fluxos, matriz de erros, logs, critérios e tracker; citações reduzidas ao que foi dito e propostas marcadas; ajustes menores de números de linha, texto e coerência. Recusado: a repetição de riscos entre PRD, RFC e FDD, porque o enunciado exige a seção nos três e os IDs locais se resolvem no tracker (revisto na iteração 19) |
+| 19 | Pós-entrega / revisão de conformidade (prompt 10) | O pacote já publicado, sem falha nos 9 validadores | A revisão contra o enunciado apontou 17 achados. Os principais: dois diagramas Mermaid do FDD (FLUXO-02 e FLUXO-04) não renderizavam por causa de um `;` na mensagem, e nenhum validador olhava a renderização; o ADR-006 dizia que todos os models usam UUID, mas `OrderNumberSequence` usa `id Int`; havia 27 linhas de risco para 13 riscos distintos entre PRD, RFC e FDD, e 9 das 12 exclusões do FDD repetiam o PRD; havia IDs reservados no meio das tabelas (RNF-12, ERR-03) e números desatualizados neste README | Diagramas corrigidos e conferidos com o parser do Mermaid 11.4.1; o validador do FDD passou a recusar `;` e `#` nesse tipo de diagrama. ADR-006 corrigido. Riscos separados por altura (produto no PRD, arquitetura no RFC, implementação no FDD), com remissões, e exclusões do FDD reduzidas às de implementação. RNF-12 removido e ERRs renumerados. Personas, cenários, testes, plano de entrega, arquivos novos, limitações, compatibilidade e implantação ganharam rótulo e linha no tracker (342 linhas). Prompts 9 e 10 incluídos. Ficou para discussão à parte, por decisão minha, o formato dos documentos do curso |
 
-**Total: 18 ajustes registrados, em 15 ciclos de geração → revisão → correção.** Conto como ciclo cada rodada registrada no diário de bordo em que um problema real foi encontrado e corrigido antes de seguir. Por etapa: catálogo 2 (o travamento e a revisão da pré-análise), ADRs 2 (a revisão da fase 2 e a correção do ADR-001 na conferência da fase 3), RFC 2, FDD 3 (incluindo o enxugamento), PRD 2, tracker 2, README 1 e revisão final 1. Ficam de fora o planejamento, o setup e as três conferências da sessão principal que não acharam problema nos documentos.
+**Total: 19 ajustes registrados, em 16 ciclos de geração → revisão → correção.** Conto como ciclo cada rodada registrada no diário de bordo em que um problema real foi encontrado e corrigido antes de seguir. Por etapa: catálogo 2 (o travamento e a revisão da pré-análise), ADRs 2 (a revisão da fase 2 e a correção do ADR-001 na conferência da fase 3), RFC 2, FDD 3 (incluindo o enxugamento), PRD 2, tracker 2, README 1, revisão final 1 e revisão de conformidade 1. Ficam de fora o planejamento, o setup e as três conferências da sessão principal que não acharam problema nos documentos.
 
 ## Como navegar a entrega
 

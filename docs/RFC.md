@@ -1,5 +1,7 @@
 # RFC-001: Sistema de Webhooks de Notificação de Pedidos
 
+## Metadados
+
 | Campo | Valor | Fonte |
 | --- | --- | --- |
 | Título | RFC-001: Sistema de Webhooks de Notificação de Pedidos | — |
@@ -11,7 +13,7 @@
 
 Proposta aberta para revisão; decisões fechadas nos ADRs, implementação no [FDD](./FDD.md).
 
-## 1. TL;DR
+## 1. Resumo executivo (TL;DR)
 
 - Clientes B2B fazem polling em `GET /orders` e querem aviso em menos de 10s quando o status muda ([09:00] Marcos, [09:02] Marcos).
 - Outbox no MySQL existente, na transação do `changeStatus`, lida por um worker separado em polling de 2s ([09:08] Larissa, [09:10] Larissa).
@@ -77,7 +79,7 @@ Adiados ou não decididos na reunião; nenhum é requisito desta entrega. Dono e
 
 **Não foram discutidos na reunião.** São leituras da análise da transcrição e do código, que os revisores precisam confirmar ou corrigir.
 
-- **PC-01 Contagem de tentativas.** O "5 tentativas" de [09:17] Larissa foi lido como 1 envio inicial + 5 retentativas, única leitura que usa os cinco intervalos: 14h36m, perto das "quase 15 horas" de [09:17] Diego. Lido como 5 envios no total ("total 5 tentativas", [09:48] Larissa), a janela cai para 2h36m. → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+- **PC-01 Contagem de tentativas.** O "5 tentativas" de [09:17] Larissa foi lido como 1 envio inicial + 5 retentativas, única leitura que usa os cinco intervalos: 14h36m, perto das "quase 15 horas" de [09:17] Diego. Com esses intervalos, o "retentaria três vezes em 30 minutos" de [09:16] Diego também é lido como três retentativas (36 min), não três envios (6 min). Lido como 5 envios no total ("total 5 tentativas", [09:48] Larissa), a janela cai para 2h36m. → [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
 - **PC-02 Formato da assinatura.** Ninguém disse como a secret antiga "fica válida" num envio de saída ([09:21] Sofia), nem se o timestamp do envio ([09:44] Diego) entra no HMAC. Proposta: duas assinaturas, nova e antiga, durante as 24h, e timestamp fora do cálculo, leitura literal da decisão ([09:22] Sofia); tudo a validar na revisão de segurança ([09:46] Sofia). → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
 - **PC-03 Ordem sob retry.** Mesmo com um único worker ([09:12] Diego), um evento em backoff pode ser ultrapassado pelo seguinte do mesmo pedido. Proposta: limitação conhecida, sem bloqueio por pedido; os clientes só querem saber se cada pedido mudou ([09:14] Marcos). → [ADR-002](./adrs/ADR-002-worker-em-processo-separado-com-polling.md), [ADR-003](./adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
 - **PC-04 Armazenamento da secret.** O HMAC exige a secret recuperável, não um hash como a senha (`prisma/schema.prisma`). Proposta: deixar a forma de guardá-la para a revisão de segurança ([09:46] Sofia) e mostrar a secret só na criação e na rotação. → [ADR-004](./adrs/ADR-004-assinatura-hmac-sha256-com-secret-por-endpoint.md)
@@ -89,16 +91,16 @@ Adiados ou não decididos na reunião; nenhum é requisito desta entrega. Dono e
 - **IMP-02 Operação.** Um processo a mais para operar ([09:11] Diego), consultando o MySQL a cada 2s.
 - **IMP-03 Clientes.** Verificar a assinatura ([09:20] Sofia) e deduplicar pelo `X-Event-Id` ([09:25] Diego), com documentação no portal ([09:26] Marcos).
 
+Riscos de arquitetura; os de produto estão no [PRD](./PRD.md) e os de implementação, no [FDD](./FDD.md).
+
 | ID | Risco | Mitigação proposta | Fonte |
 | --- | --- | --- | --- |
-| R-01 | Outbox acumula eventos e o worker fica lento | Índices e leitura só dos pendentes ([09:08] Diego); OQ-05 | [09:07] Bruno |
+| R-01 | Outbox cresce sem política de retenção e o worker fica lento | Índices e leitura só dos pendentes ([09:08] Diego); OQ-05 | [09:07] Bruno |
 | R-02 | Worker parado: eventos acumulam sem entrega | Evento gravado não se perde ([09:06] Diego); monitoramento no FDD | [09:06] Diego |
 | R-03 | Eventos do mesmo pedido fora de ordem | Instância única ([09:13] Larissa); PC-03 e OQ-02 | [09:12] Diego |
-| R-04 | Vazamento de secret pelo cliente | Secret por endpoint e rotação ([09:21] Sofia) | [09:22] Diego |
-| R-05 | Cliente fora do ar por mais de 14h36m perde a entrega automática | DLQ e replay manual, aceito pelo PM | [09:17] Marcos |
-| R-06 | Atraso faz a Atlas migrar para o concorrente | 3 sprints; Marcos confirma o prazo com a Atlas ([09:47] Marcos) | [09:00] Marcos |
+| R-04 | Fila única: um endpoint lento atrasa os envios de todos os clientes | Timeout de 10s ([09:42] Diego); paralelizar depende de OQ-02 | [09:12] Diego |
 
-**Plano de entrega.** Outbox e DLQ (uma sprint), worker e retry (uma), CRUD e histórico (meia), integração e testes ponta a ponta (meia), HMAC e validações ("mais um pouco") ([09:46] Larissa): 3 sprints, com a revisão de segurança de pelo menos dois dias úteis ([09:46] Sofia) no fim ([09:47] Larissa).
+**PLAN-01 Plano de entrega.** Outbox e DLQ (uma sprint), worker e retry (uma), CRUD e histórico (meia), integração e testes ponta a ponta (meia), HMAC e validações ("mais um pouco") ([09:46] Larissa): 3 sprints, com a revisão de segurança de pelo menos dois dias úteis ([09:46] Sofia) no fim ([09:47] Larissa).
 
 ## 8. Decisões relacionadas
 

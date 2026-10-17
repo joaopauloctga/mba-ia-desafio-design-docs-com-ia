@@ -49,7 +49,7 @@ Os números das fases 5 e 6 são os finais, já com as correções da fase 9.
 
 **Checkpoints humanos.** A IA não decidiu sozinha o que a reunião deixou ambíguo.
 
-- **Ambiguidades.** A pré-análise e o catálogo levantaram 32 pontos com mais de uma leitura, cada um com opções e recomendação. Decidi quatro: onde barrar um payload acima de 64KB (no worker, direto para a DLQ, sem travar a mudança de status), como manter a secret antiga válida por 24h na rotação (duas assinaturas no mesmo header, a validar na revisão de segurança), que erro devolver para URL sem https (um código `WEBHOOK_` próprio) e o que acontece ao remover um endpoint (soft delete, preservando histórico e DLQ). As outras 28, como a contagem "1 envio inicial + 5 retentativas" e se a criação do pedido gera evento, aprovei em bloco ("ok para o resto"). Nos documentos, essas escolhas aparecem como interpretação ou proposta, nunca como fala da reunião.
+- **Ambiguidades.** A pré-análise e o catálogo levantaram 32 pontos com mais de uma leitura, cada um com opções e recomendação. Decidi quatro: onde barrar um payload acima de 64KB (no worker, direto para a DLQ, sem travar a mudança de status), como manter a secret antiga válida por 24h na rotação (duas assinaturas no mesmo header, a validar na revisão de segurança), que erro devolver para URL sem https (um código `WEBHOOK_` próprio) e o que acontece ao remover um endpoint (soft delete, preservando histórico e DLQ). As outras 28, como a contagem "1 envio inicial + 5 retentativas" e se a criação do pedido gera evento, aprovei como recomendadas ("ok para o resto"). Nos documentos, essas escolhas aparecem como interpretação ou proposta, nunca como fala da reunião.
 - **Tamanho.** Depois de ler o FDD commitado, pedi para enxugar (iteração 12). O PRD já foi escrito com uma referência de tamanho por causa disso.
 - **Combinados do início.** Branch própria; plano local, sem commit; `ENUNCIADO.md` versionado; sem templates do curso (os documentos seguem as seções mínimas do enunciado e o formato MADR); e este README atualizado ao fim de cada fase, para registrar prompts e iterações quando aconteciam.
 - **Push** só com a minha aprovação, na fase 8.
@@ -57,11 +57,11 @@ Os números das fases 5 e 6 são os finais, já com as correções da fase 9.
 
 ## Prompts customizados
 
-Quatro são comandos que eu digitei, copiados como estão: o 1 e o 2 definiram o processo, e o 9 e o 10 pediram revisão e correção do que já estava pronto. Os prompts 3 a 8 não foram digitados por mim: são as instruções de geração que a sessão principal escreveu para o subagente de cada fase, a partir do prompt sugerido no plano daquela fase, e estão na versão efetivamente usada. Nelas, o meu papel foi pedir o plano, disparar cada fase e decidir os pontos ambíguos (ver "Checkpoints humanos"). Os caminhos `plano/...` que aparecem nelas são da pasta local do plano, que não é versionada.
+Quatro são comandos que eu digitei, copiados como estão: o 1 e o 2 definiram o processo, e o 9 e o 10 pediram revisão e correção do que já estava pronto. Os prompts 3 a 8 são as instruções de geração que a sessão principal redigiu para o subagente de cada fase, a partir do prompt sugerido no plano daquela fase, e estão na versão efetivamente usada. Nelas, o meu papel foi definir o arranjo de execução e conferência (prompt 2), disparar cada fase e decidir os pontos ambíguos (ver "Checkpoints humanos"). Os caminhos `plano/...` que aparecem nelas são da pasta local do plano, que não é versionada.
 
 ### 1. Planejamento em fases
 
-Pede um plano completo antes de qualquer documento, a partir do que o enunciado avalia.
+Eu já tinha lido o enunciado e preferi não resumi-lo: a IA tiraria o contexto melhor do texto completo do que de um resumo meu. Por isso o comando aponta o arquivo inteiro (`@ENUNCIADO.md`) e pede um plano em fases para entregar tudo o que ele exige, numa pasta fora do versionamento que serviria só de guia. Em seguida, fechei os combinados do início (ver "Checkpoints humanos").
 
 ```text
 quero q vc crie um plano completo para implementarmos esse excercicio, veja oq precisamos fazer em
